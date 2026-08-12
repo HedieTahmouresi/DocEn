@@ -38,16 +38,51 @@ corner_epochs: 100
 corner_samples_per_epoch: 2000
 heatmap_sigma: 8.0
 
-# Degradation ranges (default)
-warp_range: [0.05, 0.25]
-downscale_range: [2.0, 4.0]
-brightness_range: [0.5, 1.5]
-contrast_range: [0.5, 1.5]
-color_cast_r_range: [0.85, 1.15]
-color_cast_b_range: [0.85, 1.15]
-blur_sigmas: [0.5, 2.0]
-noise_sigmas: [5.0, 25.0]
-jpeg_qualities: [30, 80]
+# Degradation ranges (default) - legacy flat keys for compatibility
+warp_range: [0.03, 0.35]
+downscale_range: [1.5, 4.5]
+brightness_range: [0.35, 1.65]
+contrast_range: [0.4, 1.6]
+color_cast_r_range: [0.75, 1.25]
+color_cast_b_range: [0.75, 1.25]
+blur_sigmas: [0.5, 3.0]
+noise_sigmas: [3.0, 30.0]
+jpeg_qualities: [20, 90]
+
+# Generator Pipeline Configuration (synthetic-generator-spec.md §13)
+generator:
+  canvas: 512
+  geometry:
+    area_fraction: [0.15, 0.95]
+    rotation_deg: [-25.0, 25.0]
+    perspective_strength: [0.0, 0.35]
+    aspect_jitter: [-0.15, 0.15]
+    min_interior_angle_deg: 20.0
+  resolution_loss:
+    scale_factor: [1.5, 4.5]
+  photometric:
+    contrast: [0.4, 1.6]
+    brightness: [-50.0, 50.0]
+    channel_gain: [0.75, 1.25]
+  illumination:
+    gradient_range: [0.55, 1.15]
+    shadow_count: [0, 3]
+    shadow_opacity: [0.15, 0.55]
+    shadow_blur: [15, 91]
+    shadow_probability: 0.7
+  sensor:
+    blur_kernel: [3, 9]
+    blur_sigma: [0.5, 3.0]
+    motion_blur_prob: 0.25
+    noise_sigma: [3.0, 30.0]
+    darkness_scaled_noise: true
+  compression:
+    jpeg_quality: [20, 90]
+  hard_negatives:
+    distractor_count: [0, 0]
+  debug:
+    photometrics_off: false
 
 # Global seed
 seed: 42
+

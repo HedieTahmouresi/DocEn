@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+*.pt
+*.pth
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+
+# Local paths override
+paths.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data (too large for git)
+data/clean_scans/
+data/backgrounds/
+data/real_photos/
+data/frozen/
+!data/splits/
+!data/.gitkeep
+
+# Outputs and runs
+outputs/checkpoints/
+outputs/logs/
+runs/
+!outputs/figures/
+!.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+

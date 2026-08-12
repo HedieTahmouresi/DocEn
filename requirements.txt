@@ -1,0 +1,34 @@
+# Core ML Framework
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Image Processing (REQUIRED: all degradations MUST use OpenCV)
+opencv-python>=4.7.0
+Pillow>=9.4.0
+
+# Numerical Computing
+numpy>=1.24.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# Metrics (PSNR, SSIM)
+scikit-image>=0.20.0
+
+# Progress Bars
+tqdm>=4.65.0
+
+# Training Monitoring
+tensorboard>=2.13.0
+
+# COCO Annotation Parsing (Optional: we parse COCO JSON with plain `json` now for polygon vertices, but kept for convenience)
+pycocotools>=2.0.6
+
+# OCR Evaluation
+pytesseract>=0.3.10
+
+# Differentiable Geometry (Bonus: end-to-end pipeline)
+# kornia>=0.7.0
+
+# Reproducibility
+scipy>=1.10.0

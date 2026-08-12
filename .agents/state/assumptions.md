@@ -25,8 +25,8 @@ built on it (`GEMINI.md` §6 — a false `[ASM]` is an escalation trigger).
 | ID | Assumption | Validate at | Status | Affects |
 |---|---|---|---|---|
 | `[ASM-01]` | Colab T4 is ~15–20× faster than the MX330 on this workload | Phase 00 §E benchmark | OPEN | ADR-001 machine roles |
-| `[ASM-02]` | The provided scan set is ~100–300 scans | Phase 00 intake audit | OPEN | Split counts, frozen sizing, cache budget, ADR-003 |
-| `[ASM-03]` | Provided scans are genuinely clean, flat and deskewed | Phase 00 visual audit | OPEN | Achievable enhancement quality ceiling |
+| `[ASM-02]` | The provided scan set is ~100–300 scans | Phase 00 intake audit | **FALSIFIED (50 scans)** | Split counts: 41/5/4; updated held-out samples |
+| `[ASM-03]` | Provided scans are genuinely clean, flat and deskewed | Phase 00 visual audit | **VALIDATED** | Achievable enhancement quality ceiling |
 | `[ASM-04]` | Zhao et al.'s α=0.84 transfers from natural images to documents | Phase 04 α sweep | OPEN | ADR-006 loss weighting |
 | `[ASM-05]` | σ=8 px at 512 is a reasonable heatmap width | Phase 06 σ sweep | OPEN | ADR-008 (marked PROVISIONAL) |
 | `[ASM-06]` | Plain MSE trains the heatmap network adequately | Phase 06 first run | OPEN | ADR-008 loss; weighted MSE is the pre-approved fallback |
@@ -36,7 +36,7 @@ built on it (`GEMINI.md` §6 — a false `[ASM]` is an escalation trigger).
 | `[ASM-10]` | The baseline's reported figures (96%/0.00%, 1.85/107.44 px) are accurate | **Cannot verify — notebook unavailable** | OPEN | Only the *pattern* is relied on, never the magnitudes |
 | `[ASM-11]` | 20–25 real photos are enough to estimate the real distribution for calibration | Phase 01 coverage plot | OPEN | ADR-004 §3 calibration; mitigated by the deliberate widening |
 | `[ASM-12]` | All four page corners visible in every real photo (no truncation) | Phase 01 annotation | OPEN | ADR-004 §4 — truncation is out of scope by design |
-| `[ASM-13]` | Documents in the real photos never appear in the provided scan set | Phase 00 / Phase 01 audit | OPEN | `[REQ-02]`; the generalisation claim depends on it |
+| `[ASM-13]` | Documents in the real photos never appear in the provided scan set | Phase 00 / Phase 01 audit | **VALIDATED** | `[REQ-02]`; the generalisation claim depends on it |
 
 ---
 

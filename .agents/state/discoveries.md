@@ -129,12 +129,16 @@ what depends on them.*
 
 | Fact | Value | Recorded |
 |---|---|---|
-| Clean scan count | *unknown* | `[OPEN-01]` |
-| Scan resolution (min/median/max) | *unknown* | `[OPEN-01]` |
-| Aspect-ratio distribution | *unknown* | `[OPEN-01]` |
-| Colour vs greyscale | *unknown* | `[OPEN-01]` |
-| Split counts (80/10/10) | *unknown* | Phase 00 |
+| Clean scan count | **50** | 2026-08-12 (Phase 00 Audit) |
+| Scan resolution (min/median/max) | **(2384×3396) / (2468.5×3512) / (2480×3648)** | 2026-08-12 (Phase 00 Audit) |
+| Aspect-ratio distribution | **0.67 – 0.73 (median 0.70)** | 2026-08-12 (Phase 00 Audit) |
+| Colour vs greyscale | **50 RGB (3-channel)** | 2026-08-12 (Phase 00 Audit) |
+| Split counts (80/10/10) | **41 Train / 5 Val / 4 Test** | 2026-08-12 (Phase 00 Audit) |
+| Real photos & reference scans | **30 active photos / 30 reference scans** (5 removed) | 2026-08-12 (Phase 00 Audit) |
+| Backgrounds count | **64 files** (1.jpg – 64.jpg, min side 300px) | 2026-08-12 (Phase 00 Audit) |
+| Workstation CPU step time | **1058.16 ms/step (1.058 s/step)** @ batch=2 | 2026-08-12 (Phase 00 Audit) |
 | Generator throughput (1/2/4 workers) | *unknown* | Phase 02 |
 | Sustained Colab GPU utilisation | *unknown* | Phase 03 |
 | MX330 vs T4 speed ratio | *estimated 15–20×, unmeasured* | `[ASM-01]`, Phase 00 |
 | Normalisation mean/std | *unknown* | Phase 03 |
+

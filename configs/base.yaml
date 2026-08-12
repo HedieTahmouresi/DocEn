@@ -1,0 +1,53 @@
+# Base configuration for Document Scanning & Enhancement Project
+# All experiment configs inherit from base.yaml, overridden by env/*.yaml and exp/*.yaml
+
+img_size: 512
+img_channels: 3
+
+# Paths (relative or environment-driven)
+data_dir: "data"
+clean_scans_dir: "data/clean_scans"
+backgrounds_dir: "data/backgrounds"
+real_photos_dir: "data/real_photos"
+raw_photos_dir: "data/real_photos/raw"
+reference_scans_dir: "data/real_photos/reference_scans"
+annotations_file: "data/real_photos/annotations/CV Doc-Enhancement Real Test Set.v1i.coco/train/_annotations.coco.json"
+splits_file: "data/splits/splits.json"
+frozen_dir: "data/frozen"
+runs_dir: "runs"
+
+# Splits
+train_ratio: 0.8
+val_ratio: 0.1
+test_ratio: 0.1
+split_seed: 42
+frozen_seed: 123
+
+# Enhancement Training
+enhance_lr: 0.001
+enhance_epochs: 100
+enhance_samples_per_epoch: 2000
+loss_weights:
+  l1: 1.0
+  ssim: 0.5
+  edge: 0.1
+
+# Corner Training
+corner_lr: 0.001
+corner_epochs: 100
+corner_samples_per_epoch: 2000
+heatmap_sigma: 8.0
+
+# Degradation ranges (default)
+warp_range: [0.05, 0.25]
+downscale_range: [2.0, 4.0]
+brightness_range: [0.5, 1.5]
+contrast_range: [0.5, 1.5]
+color_cast_r_range: [0.85, 1.15]
+color_cast_b_range: [0.85, 1.15]
+blur_sigmas: [0.5, 2.0]
+noise_sigmas: [5.0, 25.0]
+jpeg_qualities: [30, 80]
+
+# Global seed
+seed: 42

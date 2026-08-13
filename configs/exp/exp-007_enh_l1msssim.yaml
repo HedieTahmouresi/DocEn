@@ -1,8 +1,8 @@
 run:
-  experiment_id: exp-004
-  name: enh_l1msssim_sobel
+  experiment_id: exp-007
+  name: enh_l1msssim
   seed: 1337
-  notes: "L-D variant: L1 + MS-SSIM + Sobel edge loss (alpha=0.84, sobel_weight=0.1)"
+  notes: "L-C variant: L1 + MS-SSIM (alpha=0.84)"
 
 model:
   arch: unet
@@ -20,9 +20,8 @@ data:
   frozen_version: v1
 
 loss:
-  type: l1_msssim_sobel
+  type: l1_msssim
   alpha: 0.84
-  sobel_weight: 0.1
 
 optim:
   optimizer: adam

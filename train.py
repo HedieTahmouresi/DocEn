@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/exp/exp-001_enh_mse.yaml",
+        default="configs/exp/exp-005_enh_mse.yaml",
         help="Path or name of experiment YAML config",
     )
     parser.add_argument(
@@ -206,7 +206,7 @@ def main():
     seed_everything(seed)
 
     # Setup directories
-    run_id = cfg.get("run", {}).get("experiment_id", "exp-001")
+    run_id = cfg.get("run", {}).get("experiment_id", "exp-000")
     exp_name = cfg.get("run", {}).get("name", "enh_model")
     run_dir = Path(cfg.get("runs_root", "runs")) / f"{run_id}_{exp_name}"
     ckpt_dir = run_dir / "checkpoints"

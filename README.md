@@ -83,18 +83,18 @@ python -m src.data.freeze
 python -m pytest tests/ -q
 
 # A short end-to-end smoke run
-python train.py --config configs/exp/exp-003_enh_l1msssim.yaml --env local_cpu \
+python train.py --config configs/exp/exp-007_enh_l1msssim.yaml --env local_cpu \
     --epochs 2 --samples-per-epoch 40
 
 # The loss ablation (see notebooks/colab_train.ipynb for the Colab version)
-python train.py --config configs/exp/exp-001_enh_mse.yaml --env colab_t4
-python train.py --config configs/exp/exp-002_enh_l1.yaml --env colab_t4
-python train.py --config configs/exp/exp-003_enh_l1msssim.yaml --env colab_t4
-python train.py --config configs/exp/exp-004_enh_l1msssim_sobel.yaml --env colab_t4
+python train.py --config configs/exp/exp-005_enh_mse.yaml --env colab_t4
+python train.py --config configs/exp/exp-006_enh_l1.yaml --env colab_t4
+python train.py --config configs/exp/exp-007_enh_l1msssim.yaml --env colab_t4
+python train.py --config configs/exp/exp-008_enh_l1msssim_sobel.yaml --env colab_t4
 
 # Resume an interrupted run
-python train.py --config configs/exp/exp-001_enh_mse.yaml --env colab_t4 \
-    --resume runs/exp-001_enh_mse/checkpoints/last.pt
+python train.py --config configs/exp/exp-005_enh_mse.yaml --env colab_t4 \
+    --resume runs/exp-005_enh_mse/checkpoints/last.pt
 
 # Figures, restored samples, and the summary table vs the no-model baseline
 python -m scripts.evaluate_ablation

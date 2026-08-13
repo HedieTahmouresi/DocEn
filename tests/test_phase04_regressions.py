@@ -158,10 +158,10 @@ def test_unknown_environment_profile_raises():
 # --------------------------------------------------------------------------------------
 
 EXP_CONFIGS = [
-    "exp-001_enh_mse.yaml",
-    "exp-002_enh_l1.yaml",
-    "exp-003_enh_l1msssim.yaml",
-    "exp-004_enh_l1msssim_sobel.yaml",
+    "exp-005_enh_mse.yaml",
+    "exp-006_enh_l1.yaml",
+    "exp-007_enh_l1msssim.yaml",
+    "exp-008_enh_l1msssim_sobel.yaml",
 ]
 
 

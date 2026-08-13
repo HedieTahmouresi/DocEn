@@ -35,12 +35,12 @@ def plot_loss_curves(run_dirs: list, output_path: str = "outputs/figures/p04_los
     ax1 = plt.subplot(1, 2, 1)
     ax2 = plt.subplot(1, 2, 2)
 
-    colors = {"exp-001": "#1f77b4", "exp-002": "#ff7f0e", "exp-003": "#2ca02c", "exp-004": "#d62728"}
+    colors = {"exp-005": "#1f77b4", "exp-006": "#ff7f0e", "exp-007": "#2ca02c", "exp-008": "#d62728"}
     labels = {
-        "exp-001": "L-A (MSE)",
-        "exp-002": "L-B (L1)",
-        "exp-003": "L-C (L1 + MS-SSIM)",
-        "exp-004": "L-D (+ Sobel)",
+        "exp-005": "L-A (MSE)",
+        "exp-006": "L-B (L1)",
+        "exp-007": "L-C (L1 + MS-SSIM)",
+        "exp-008": "L-D (+ Sobel)",
     }
 
     for run_dir in run_dirs:
@@ -260,10 +260,10 @@ if __name__ == "__main__":
 
     variant_names = ["L-A", "L-B", "L-C", "L-D"]
     run_dirs = [
-        runs_root / "exp-001_enh_mse",
-        runs_root / "exp-002_enh_l1",
-        runs_root / "exp-003_enh_l1msssim",
-        runs_root / "exp-004_enh_l1msssim_sobel",
+        runs_root / "exp-005_enh_mse",
+        runs_root / "exp-006_enh_l1",
+        runs_root / "exp-007_enh_l1msssim",
+        runs_root / "exp-008_enh_l1msssim_sobel",
     ]
 
     plot_loss_curves([str(d) for d in run_dirs])

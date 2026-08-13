@@ -17,10 +17,10 @@ from src.data.normalization import resolve_from_checkpoint
 from src.utils.io import save_image
 
 RUNS = {
-    "MSE": "exp-001_enh_mse",
-    "L1": "exp-002_enh_l1",
-    "L1_MSSSIM": "exp-003_enh_l1msssim",
-    "L1_MSSSIM_Sobel": "exp-004_enh_l1msssim_sobel",
+    "MSE": "exp-005_enh_mse",
+    "L1": "exp-006_enh_l1",
+    "L1_MSSSIM": "exp-007_enh_l1msssim",
+    "L1_MSSSIM_Sobel": "exp-008_enh_l1msssim_sobel",
 }
 
 

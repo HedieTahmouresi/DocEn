@@ -1,8 +1,8 @@
 run:
-  experiment_id: exp-003
-  name: enh_l1msssim
+  experiment_id: exp-005
+  name: enh_mse
   seed: 1337
-  notes: "L-C variant: L1 + MS-SSIM (alpha=0.84)"
+  notes: "L-A variant: MSE loss"
 
 model:
   arch: unet
@@ -20,8 +20,7 @@ data:
   frozen_version: v1
 
 loss:
-  type: l1_msssim
-  alpha: 0.84
+  type: mse
 
 optim:
   optimizer: adam

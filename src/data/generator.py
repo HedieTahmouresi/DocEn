@@ -270,15 +270,16 @@ class SyntheticSampleGenerator:
                 brightness = float(self.rng.uniform(*self.brightness_range))
 
                 # Safety: prevent white-wash by capping the combined effect.
-                # If contrast * mean_pixel + brightness would push the page
-                # mean above 230, reduce brightness to keep content visible.
-                mean_val = float(np.mean(composite_f32))
-                projected_mean = contrast * mean_val + brightness
+                # Compute mean strictly over the document to prevent dark backgrounds from skewing it.
+                page_pixels = composite_f32[page_mask_3d[:, :, 0] > 0.5]
+                mean_val = float(np.mean(page_pixels)) if page_pixels.size > 0 else 127.5
+                
+                projected_mean = 127.5 + contrast * (mean_val - 127.5) + brightness
                 if projected_mean > 230.0:
-                    brightness = 230.0 - contrast * mean_val
+                    brightness = 230.0 - (127.5 + contrast * (mean_val - 127.5))
                 # Also prevent total blackout
                 if projected_mean < 25.0:
-                    brightness = 25.0 - contrast * mean_val
+                    brightness = 25.0 - (127.5 + contrast * (mean_val - 127.5))
 
                 # Channel gains: BGR order! Index 0 is Blue, Index 2 is Red
                 cast_r = float(self.rng.uniform(*self.channel_gain_range))
@@ -289,8 +290,8 @@ class SyntheticSampleGenerator:
                 params["color_cast_r"] = cast_r
                 params["color_cast_b"] = cast_b
 
-                # Apply contrast and brightness
-                composite_f32 = contrast * composite_f32 + brightness
+                # Apply contrast and brightness with a 127.5 pivot
+                composite_f32 = 127.5 + contrast * (composite_f32 - 127.5) + brightness
 
                 # Apply colour cast (BGR: [b, g, r])
                 composite_f32[:, :, 0] *= cast_b

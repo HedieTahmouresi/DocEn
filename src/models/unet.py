@@ -11,6 +11,51 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def init_relu_trunk(module: nn.Module) -> None:
+    """Kaiming init for the ReLU trunk; BatchNorm starts as the identity.
+
+    Every conv in the trunk is followed by BatchNorm, which renormalises whatever
+    scale the initialiser chose — so `fan_in` vs `fan_out` is immaterial here. It is
+    only the output head, which has no normalisation after it, where the choice
+    survives to the prediction. See `init_sigmoid_head`.
+    """
+    for m in module.modules():
+        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0.0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant_(m.weight, 1.0)
+            nn.init.constant_(m.bias, 0.0)
+        elif isinstance(m, nn.Linear):
+            # Followed by ReLU: fan_in is the mode that keeps the forward variance ~1.
+            nn.init.kaiming_normal_(m.weight, mode="fan_in", nonlinearity="relu")
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0.0)
+
+
+def init_sigmoid_head(m: nn.Module) -> None:
+    """Small-gain init for the final layer, whose activation is a sigmoid.
+
+    Kaiming-with-ReLU-gain is wrong here twice over: there is no ReLU after this
+    layer, and `mode="fan_out"` on a 1x1 conv with 3 output channels evaluates
+    `sqrt(2 / 3) ~ 0.82`. Fanning 64 input channels through weights that wide puts
+    the pre-sigmoid activations at a standard deviation of roughly 4-6, so the
+    sigmoid starts hard-saturated: most pixels sit at 0 or 1, the local derivative
+    is near zero, and the first epochs are spent escaping the initialisation rather
+    than learning. The corner regressor was worse still — its final `Linear(256, 8)`
+    drew from `sqrt(2 / 8) = 0.5`, giving pre-sigmoid activations around 8 sigma.
+
+    Xavier keeps the pre-sigmoid activations near unit variance, which is where the
+    sigmoid derivative is largest. Zero bias means the network starts by predicting
+    0.5 everywhere: mid-grey for an image head, the image centre for corner
+    coordinates. Both are the correct uninformed prior.
+    """
+    nn.init.xavier_uniform_(m.weight, gain=1.0)
+    if m.bias is not None:
+        nn.init.constant_(m.bias, 0.0)
+
+
 class DoubleConv(nn.Module):
     """(Conv3x3 -> BatchNorm2d -> ReLU) * 2."""
 
@@ -170,15 +215,9 @@ class EnhancementNet(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        """Initialize weights using Kaiming Normal for Conv2d and default for BatchNorm2d."""
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1.0)
-                nn.init.constant_(m.bias, 0.0)
+        """Kaiming for the ReLU trunk, Xavier for the sigmoid head."""
+        init_relu_trunk(self)
+        init_sigmoid_head(self.decoder.head)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         bottleneck_feat, skips = self.encoder(x)
@@ -222,18 +261,14 @@ class CornerRegNet(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1.0)
-                nn.init.constant_(m.bias, 0.0)
-            elif isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0)
+        """Kaiming for the ReLU trunk and hidden FC layers, Xavier for the sigmoid head.
+
+        ADR-007 §2 commits to a *fair* comparison between Approach A and Approach B.
+        A saturated coordinate head would hand Approach B the win on an artefact of
+        initialisation rather than on the property the spec is asking about.
+        """
+        init_relu_trunk(self)
+        init_sigmoid_head(self.fc_head[-2])  # the Linear(256, 8) before the Sigmoid
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         bottleneck_feat, _ = self.encoder(x)
@@ -274,14 +309,9 @@ class CornerHeatmapNet(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1.0)
-                nn.init.constant_(m.bias, 0.0)
+        """Kaiming for the ReLU trunk, Xavier for the sigmoid heatmap head."""
+        init_relu_trunk(self)
+        init_sigmoid_head(self.decoder.head)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         bottleneck_feat, skips = self.encoder(x)

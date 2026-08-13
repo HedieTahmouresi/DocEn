@@ -190,8 +190,16 @@ def main():
 
     # Set device
     device_str = cfg.get("env", {}).get("device", "cpu")
-    if device_str == "cuda" and not torch.cuda.is_available():
-        device_str = "cpu"
+    if device_str == "cuda":
+        if not torch.cuda.is_available():
+            device_str = "cpu"
+        else:
+            try:
+                _ = torch.zeros(1).cuda()
+            except Exception:
+                print("Warning: CUDA device detected but incompatible on this local hardware. Falling back to CPU.")
+                device_str = "cpu"
+
     device = torch.device(device_str)
 
     use_amp = cfg.get("env", {}).get("amp", False) and device.type == "cuda"

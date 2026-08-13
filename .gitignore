@@ -49,3 +49,5 @@ runs/
 Thumbs.db
 
 .agents/
+AGENTS.md
+GEMINI.md

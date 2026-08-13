@@ -100,7 +100,6 @@ generator:
     - 91
     shadow_probability: 0.4
     probability: 0.7
-    min_pixel_multiplier: 0.35
   sensor:
     blur_kernel:
     - 3

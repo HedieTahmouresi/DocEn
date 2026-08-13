@@ -133,7 +133,6 @@ class SyntheticSampleGenerator:
         self.shadow_blur_range = illum_cfg.get("shadow_blur", (15, 91))
         self.shadow_probability = illum_cfg.get("shadow_probability", 0.4)
         self.illumination_prob = illum_cfg.get("probability", 0.7)
-        self.min_pixel_multiplier = illum_cfg.get("min_pixel_multiplier", 0.35)
 
         sensor_cfg = gen_cfg.get("sensor", {})
         self.blur_kernel_range = sensor_cfg.get("blur_kernel", (3, 7))
@@ -370,9 +369,14 @@ class SyntheticSampleGenerator:
                     shadow_blurred = cv2.GaussianBlur(shadow_mask.astype(np.float32) / 255.0, (blur_k, blur_k), 0)
                     composite_f32 *= (1.0 - opacity * shadow_blurred[:, :, None])
 
-                # Safety floor: ensure no pixel region is darkened below
-                # min_pixel_multiplier of its original value. This prevents
-                # the gradient × shadow stack from producing all-black areas.
+                # Worst case here is grad_low ~0.65 times two shadows at opacity 0.4,
+                # i.e. ~0.23x — dim, but a multiplicative dim preserves relative
+                # contrast, so the text is attenuated rather than destroyed and the
+                # network can recover it. Deliberately left unclamped: ADR-004 §3 wants
+                # ranges *wider* than the observed real-photo distribution, and a floor
+                # here would cut exactly the tail the hidden test set may contain.
+                # (`min_pixel_multiplier` used to be read from config, described in a
+                # comment as such a floor, and never actually applied to anything.)
                 composite_f32 = np.clip(composite_f32, 0.0, 255.0)
 
             # -----------------------------------------------------------------

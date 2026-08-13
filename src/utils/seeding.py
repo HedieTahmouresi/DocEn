@@ -36,3 +36,6 @@ def worker_init_fn(worker_id: int) -> None:
         random.seed(worker_seed)
         np.random.seed(worker_seed % (2**32 - 1))
         dataset.rng = np.random.default_rng(worker_seed)
+        if hasattr(dataset, "generator") and hasattr(dataset.generator, "rng"):
+            dataset.generator.rng = np.random.RandomState(worker_seed % (2**32 - 1))
+

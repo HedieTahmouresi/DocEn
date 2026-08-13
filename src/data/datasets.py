@@ -106,61 +106,54 @@ class SyntheticTrainDataset(Dataset):
         self.rng = np.random.default_rng(seed)
 
     def set_epoch(self, epoch: int) -> None:
-        """Update current epoch for worker RNG seeding."""
+        """Update the epoch so each epoch draws fresh samples.
+
+        With `num_workers > 0` the re-seed happens in `worker_init_fn`, which reads
+        `self.epoch` out of the pickled dataset. With `num_workers == 0` that hook is
+        never called, so without the re-seed below every epoch would replay the exact
+        same `samples_per_epoch` composites — an infinite-data pipeline silently
+        collapsed into a fixed, memorisable set.
+        """
         self.epoch = epoch
+        self.rng = np.random.default_rng(self.seed + epoch)
+        self.generator.rng = np.random.RandomState((self.seed + epoch) % (2 ** 32 - 1))
 
     def __len__(self) -> int:
         return self.samples_per_epoch
 
+    def _to_tensor(self, img_bgr: np.ndarray) -> torch.Tensor:
+        """BGR uint8 HWC -> RGB float32 CHW in [0, 1] (conventions §3)."""
+        rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).transpose(2, 0, 1)
+        return torch.from_numpy(np.ascontiguousarray(rgb)).float().div_(255.0)
+
+    def _standardize(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply ADR-009 input standardisation, if configured."""
+        if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
+            return (x - self.mean_tensor) / self.std_tensor
+        return x
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        # Sync worker generator RNG if updated by worker_init_fn
-        if hasattr(self, "rng") and hasattr(self.generator, "rng"):
-            # Sample sample using generator
-            pass
-
-        sample = self.generator.generate()
-
-        composite_bgr = sample["composite"]          # (512, 512, 3) uint8 BGR
-        enh_input_bgr = sample["enhance_input"]      # (512, 512, 3) uint8 BGR
-        enh_target_bgr = sample["enhance_target"]    # (512, 512, 3) uint8 BGR
-        corners_abs = sample["corners"]              # (4, 2) float32 absolute px
-        heatmaps = sample["heatmaps"]                # (4, 512, 512) float32 [0, 1]
+        # Only the outputs this task needs are rendered; the generator skips the rest.
+        sample = self.generator.generate(task=self.task)
 
         w, h = self.target_size
 
-        # Boundary conversion: BGR uint8 -> RGB float32 tensor [0, 1]
-        comp_rgb = cv2.cvtColor(composite_bgr, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
-        enh_in_rgb = cv2.cvtColor(enh_input_bgr, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
-        enh_tgt_rgb = cv2.cvtColor(enh_target_bgr, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
+        if self.task == "enhancement":
+            return {
+                "input": self._standardize(self._to_tensor(sample["enhance_input"])),
+                "target": self._to_tensor(sample["enhance_target"]),
+            }
 
-        comp_tensor = torch.from_numpy(comp_rgb)
-        enh_in_tensor = torch.from_numpy(enh_in_rgb)
-        enh_tgt_tensor = torch.from_numpy(enh_tgt_rgb)
-
-        # Corners: normalized to [0, 1] by dividing by (w, h)
-        corners_norm = corners_abs.copy()
+        # "corner"
+        corners_norm = sample["corners"].copy()
         corners_norm[:, 0] /= float(w)
         corners_norm[:, 1] /= float(h)
-        corners_tensor = torch.from_numpy(corners_norm).float()
-        heatmaps_tensor = torch.from_numpy(heatmaps).float()
 
-        if self.task == "enhancement":
-            input_tensor = enh_in_tensor
-            if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
-                input_tensor = (input_tensor - self.mean_tensor) / self.std_tensor
-            return {
-                "input": input_tensor,
-                "target": enh_tgt_tensor
-            }
-        else:  # "corner"
-            input_tensor = comp_tensor
-            if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
-                input_tensor = (input_tensor - self.mean_tensor) / self.std_tensor
-            return {
-                "input": input_tensor,
-                "target_corners": corners_tensor,
-                "target_heatmaps": heatmaps_tensor
-            }
+        return {
+            "input": self._standardize(self._to_tensor(sample["composite"])),
+            "target_corners": torch.from_numpy(corners_norm).float(),
+            "target_heatmaps": torch.from_numpy(sample["heatmaps"]).float(),
+        }
 
 
 class FrozenEvalDataset(Dataset):
@@ -224,60 +217,65 @@ class FrozenEvalDataset(Dataset):
     def __len__(self) -> int:
         return len(self.sample_ids)
 
+    def _load_uint8(self, sample_id: str) -> Dict[str, np.ndarray]:
+        """Decode (and memoise) only the PNGs this task needs, as uint8 RGB HWC.
+
+        The cache deliberately holds uint8 rather than the assembled float tensors:
+        500 samples of float32 CHW pairs is ~3 GB per worker, which does not fit
+        alongside training on a Colab runtime. uint8 is 8x smaller, and the float
+        conversion is negligible next to the PNG decode it saves.
+        """
+        cached = self._cache.get(sample_id)
+        if cached is not None:
+            return cached
+
+        if self.task == "corner":
+            imgs = {"composite": load_image(self.images_dir / f"{sample_id}_composite.png")}
+        else:
+            imgs = {
+                "enh_input": load_image(self.images_dir / f"{sample_id}_enh_input.png"),
+                "enh_target": load_image(self.images_dir / f"{sample_id}_enh_target.png"),
+            }
+
+        self._cache[sample_id] = imgs
+        return imgs
+
+    @staticmethod
+    def _to_tensor(img_rgb: np.ndarray) -> torch.Tensor:
+        """RGB uint8 HWC -> float32 CHW in [0, 1]."""
+        return torch.from_numpy(np.ascontiguousarray(img_rgb.transpose(2, 0, 1))).float().div_(255.0)
+
+    def _standardize(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply ADR-009 input standardisation, if configured."""
+        if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
+            return (x - self.mean_tensor) / self.std_tensor
+        return x
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample_id = self.sample_ids[idx]
-        if sample_id in self._cache:
-            return self._cache[sample_id]
+        imgs = self._load_uint8(sample_id)
 
-        comp_path = self.images_dir / f"{sample_id}_composite.png"
-        enh_in_path = self.images_dir / f"{sample_id}_enh_input.png"
-        enh_tgt_path = self.images_dir / f"{sample_id}_enh_target.png"
-
-        # load_image returns RGB float32 [0, 1] in HWC
-        comp_rgb = load_image(comp_path)
-        enh_in_rgb = load_image(enh_in_path)
-        enh_tgt_rgb = load_image(enh_tgt_path)
-
-        comp_tensor = torch.from_numpy(comp_rgb.transpose(2, 0, 1)).float() / 255.0
-        enh_in_tensor = torch.from_numpy(enh_in_rgb.transpose(2, 0, 1)).float() / 255.0
-        enh_tgt_tensor = torch.from_numpy(enh_tgt_rgb.transpose(2, 0, 1)).float() / 255.0
-
-        # Load corners in absolute px @ target_size
+        # Corners are stored in absolute px at target_size; REQ-13 wants them in [0, 1].
         corners_abs = np.array(self.corners_data[sample_id], dtype=np.float32)  # (4, 2)
         w, h = self.target_size
         corners_norm = corners_abs.copy()
         corners_norm[:, 0] /= float(w)
         corners_norm[:, 1] /= float(h)
 
-        corners_tensor = torch.from_numpy(corners_norm).float()
-
         if self.task == "corner":
             heatmaps = render_heatmaps(corners_abs, canvas_size=self.target_size, sigma=self.heatmap_sigma)
-            heatmaps_tensor = torch.from_numpy(heatmaps).float()
-
-            input_tensor = comp_tensor
-            if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
-                input_tensor = (input_tensor - self.mean_tensor) / self.std_tensor
-
-            res = {
+            return {
                 "name": sample_id,
-                "input": input_tensor,
-                "target_corners": corners_tensor,
-                "target_heatmaps": heatmaps_tensor
-            }
-        else:  # "enhancement"
-            input_tensor = enh_in_tensor
-            if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
-                input_tensor = (input_tensor - self.mean_tensor) / self.std_tensor
-
-            res = {
-                "name": sample_id,
-                "input": input_tensor,
-                "target": enh_tgt_tensor
+                "input": self._standardize(self._to_tensor(imgs["composite"])),
+                "target_corners": torch.from_numpy(corners_norm).float(),
+                "target_heatmaps": torch.from_numpy(heatmaps).float(),
             }
 
-        self._cache[sample_id] = res
-        return res
+        return {
+            "name": sample_id,
+            "input": self._standardize(self._to_tensor(imgs["enh_input"])),
+            "target": self._to_tensor(imgs["enh_target"]),
+        }
 
 
 class BaselineDataset(FrozenEvalDataset):
@@ -364,6 +362,17 @@ class RealPhotoDataset(Dataset):
         """CON-06 safety guard: explicitly raises error if called."""
         raise RuntimeError("CON-06 Violation: Degradation pipeline cannot touch real photos!")
 
+    @staticmethod
+    def _to_tensor(img_rgb: np.ndarray) -> torch.Tensor:
+        """RGB uint8 HWC -> float32 CHW in [0, 1]."""
+        return torch.from_numpy(np.ascontiguousarray(img_rgb.transpose(2, 0, 1))).float().div_(255.0)
+
+    def _standardize(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply ADR-009 input standardisation, if configured."""
+        if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
+            return (x - self.mean_tensor) / self.std_tensor
+        return x
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         name = self.samples[idx]
         raw_path = self.raw_dir / name
@@ -377,42 +386,27 @@ class RealPhotoDataset(Dataset):
             # Resize raw photo to target_size
             resized_raw = cv2.resize(raw_rgb, self.target_size, interpolation=cv2.INTER_AREA)
 
-            # Scale corners to [0, 1] normalized space
+            # REQ-12: corners scale with the image, by the same factors.
+            # REQ-13: normalised to [0, 1] by the same (w, h) convention the generator uses.
             scaled_corners = gt_corners.copy()
             scaled_corners[:, 0] /= float(w)
             scaled_corners[:, 1] /= float(h)
 
-            # Tensor conversions: CHW float32 [0, 1]
-            raw_tensor = torch.from_numpy(resized_raw.transpose(2, 0, 1)).float()
-            corners_tensor = torch.from_numpy(scaled_corners).float()
-
-            if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
-                raw_tensor = (raw_tensor - self.mean_tensor) / self.std_tensor
-
             return {
                 "name": name,
-                "input": raw_tensor,               # (3, H, W) float32
-                "target_corners": corners_tensor  # (4, 2) float32 [0, 1]
+                "input": self._standardize(self._to_tensor(resized_raw)),
+                "target_corners": torch.from_numpy(scaled_corners).float(),  # (4, 2) [0, 1]
             }
 
-        else:  # "enhancement"
-            # Rectify raw photo using ground truth corners into (target_w, target_h)
-            rectified_crop = rectify_document(raw_rgb, gt_corners, target_size=self.target_size)
+        # "enhancement": rectify with the annotated corners (REQ-16), never degrade (CON-06)
+        rectified_crop = rectify_document(raw_rgb, gt_corners, target_size=self.target_size)
 
-            # Load and resize reference scan to (target_w, target_h)
-            ref_rgb = load_image(ref_path)
-            resized_ref = cv2.resize(ref_rgb, self.target_size, interpolation=cv2.INTER_AREA)
+        # Reference scan resized to the same size so the two are directly comparable (REQ-16).
+        # It is a commercial baseline, NOT a training target (REQ-03).
+        resized_ref = cv2.resize(load_image(ref_path), self.target_size, interpolation=cv2.INTER_AREA)
 
-            # Tensor conversions: CHW float32 [0, 1]
-            crop_tensor = torch.from_numpy(rectified_crop.transpose(2, 0, 1)).float() / 255.0
-            ref_tensor = torch.from_numpy(resized_ref.transpose(2, 0, 1)).float() / 255.0
-
-
-            if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
-                crop_tensor = (crop_tensor - self.mean_tensor) / self.std_tensor
-
-            return {
-                "name": name,
-                "input": crop_tensor,   # (3, H, W) float32 - rectified crop
-                "target": ref_tensor    # (3, H, W) float32 [0, 1] - reference scan
-            }
+        return {
+            "name": name,
+            "input": self._standardize(self._to_tensor(rectified_crop)),
+            "target": self._to_tensor(resized_ref),
+        }

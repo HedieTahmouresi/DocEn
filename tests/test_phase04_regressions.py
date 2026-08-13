@@ -192,6 +192,36 @@ def test_ablation_runs_differ_only_in_the_loss():
         assert cfg["optim"]["weight_decay"] == 0.0
 
 
+def test_shared_stream_trainer_accepts_the_real_configs():
+    """`train_ablation.py` refuses to start unless the loss is the only difference."""
+    from train_ablation import assert_comparable
+
+    resolved = [load_config(env="colab_t4", exp_file=name) for name in EXP_CONFIGS]
+    assert_comparable(resolved, EXP_CONFIGS)  # must not raise
+
+
+def test_shared_stream_trainer_rejects_a_mismatched_arm():
+    """A stray epoch count in one arm must stop the suite, not silently confound it."""
+    from train_ablation import assert_comparable
+
+    resolved = [load_config(env="colab_t4", exp_file=name) for name in EXP_CONFIGS]
+    resolved[2]["optim"]["epochs"] += 1
+
+    with pytest.raises(ValueError):
+        assert_comparable(resolved, EXP_CONFIGS)
+
+
+def test_shared_stream_trainer_rejects_duplicate_losses():
+    """Two arms with the same loss means nothing is being ablated."""
+    from train_ablation import assert_comparable
+
+    resolved = [load_config(env="colab_t4", exp_file=name) for name in EXP_CONFIGS]
+    resolved[1]["loss"]["type"] = resolved[0]["loss"]["type"]
+
+    with pytest.raises(ValueError):
+        assert_comparable(resolved, EXP_CONFIGS)
+
+
 def test_ablation_schedule_is_long_enough_to_converge():
     """training-spec §4/§8: ~250 steps/epoch, converging somewhere around 40-60 epochs.
 

@@ -189,7 +189,7 @@ def main():
     save_resolved_config(cfg, run_dir)
 
     # Set device
-    device_str = cfg.get("env", {}).get("device", "cpu")
+    device_str = cfg.get("device") or cfg.get("env", {}).get("device", "cpu")
     if device_str == "cuda":
         if not torch.cuda.is_available():
             device_str = "cpu"
@@ -202,7 +202,8 @@ def main():
 
     device = torch.device(device_str)
 
-    use_amp = cfg.get("env", {}).get("amp", False) and device.type == "cuda"
+    amp_val = cfg.get("amp") if "amp" in cfg else cfg.get("env", {}).get("amp", False)
+    use_amp = bool(amp_val) and device.type == "cuda"
 
     print(f"=== Starting Run {run_id}: {exp_name} ===")
     print(f"Device: {device} (AMP={use_amp}), Seed: {seed}")
@@ -255,8 +256,8 @@ def main():
     frozen_val_dir = Path(data_cfg.get("frozen_val_dir", data_root / "frozen" / "val"))
     val_dataset = FrozenEvalDataset(frozen_dir=frozen_val_dir, task="enhancement")
 
-    num_workers = cfg.get("env", {}).get("num_workers", 2)
-    batch_size = data_cfg.get("batch_size", 16)
+    num_workers = cfg.get("num_workers") if "num_workers" in cfg else cfg.get("env", {}).get("num_workers", 2)
+    batch_size = cfg.get("batch_size") or data_cfg.get("batch_size", 16)
     val_batch_size = max(32, batch_size * 2)
 
     train_loader = DataLoader(

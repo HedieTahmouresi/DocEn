@@ -215,12 +215,16 @@ def summarise_variants(variants: dict, baseline: dict, batch_size: int = 8) -> l
         }
     ]
 
+    # 500 samples x 4 models at 512x512 is half an hour on CPU and seconds on the T4.
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     for name, (model, dataset) in variants.items():
-        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
         psnr_total, ssim_total, n = 0.0, 0.0, 0
-        model.eval()
+        model.to(device).eval()
         for batch in loader:
-            inputs, targets = batch["input"], batch["target"]
+            inputs = batch["input"].to(device)
+            targets = batch["target"].to(device)
             outputs = model(inputs)
             b = inputs.size(0)
             psnr_total += calculate_psnr(outputs, targets) * b
@@ -229,6 +233,7 @@ def summarise_variants(variants: dict, baseline: dict, batch_size: int = 8) -> l
         rows.append(
             {"variant": name, "val_psnr": round(psnr_total / n, 4), "val_ssim": round(ssim_total / n, 4)}
         )
+        model.cpu()
 
     return rows
 

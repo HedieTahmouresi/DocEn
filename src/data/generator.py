@@ -100,8 +100,13 @@ class SyntheticSampleGenerator:
         self.config = config or {}
         self.rng = np.random.RandomState(seed)
 
-        # Extract sub-configs or fallback to defaults
-        gen_cfg = self.config.get("generator", {})
+        # Accept either the whole project config (which nests the parameters under
+        # `generator:`) or the `generator:` block on its own. train.py used to pass the
+        # inner block while freeze.py passed the outer one, so training silently ran on
+        # the hardcoded defaults below while the frozen val/test sets used base.yaml.
+        # They happen to agree today; any edit to base.yaml would have desynchronised
+        # the training distribution from the evaluation distribution with no error.
+        gen_cfg = self.config.get("generator", self.config)
         self.canvas_size = (gen_cfg.get("canvas", 512), gen_cfg.get("canvas", 512))
 
         geom_cfg = gen_cfg.get("geometry", {})
@@ -128,7 +133,6 @@ class SyntheticSampleGenerator:
         self.shadow_blur_range = illum_cfg.get("shadow_blur", (15, 91))
         self.shadow_probability = illum_cfg.get("shadow_probability", 0.4)
         self.illumination_prob = illum_cfg.get("probability", 0.7)
-        self.min_pixel_multiplier = illum_cfg.get("min_pixel_multiplier", 0.35)
 
         sensor_cfg = gen_cfg.get("sensor", {})
         self.blur_kernel_range = sensor_cfg.get("blur_kernel", (3, 7))
@@ -144,6 +148,20 @@ class SyntheticSampleGenerator:
 
         debug_cfg = gen_cfg.get("debug", {})
         self.photometrics_off_default = debug_cfg.get("photometrics_off", False)
+
+        # Heatmap sigma lives at the top level of base.yaml; ADR-008 / [ASM-05] want it
+        # sweepable over {4, 8, 12}, so it must not be hardcoded at the call site.
+        self.heatmap_sigma = float(
+            self.config.get("heatmap_sigma", gen_cfg.get("heatmap_sigma", 8.0))
+        )
+
+        # Canvas-constant coordinate grid for the illumination gradient (step 4).
+        # Built once instead of per sample; the values are identical either way.
+        c_w, c_h = self.canvas_size
+        self._grid_x, self._grid_y = np.meshgrid(
+            np.linspace(-1.0, 1.0, c_w, dtype=np.float32),
+            np.linspace(-1.0, 1.0, c_h, dtype=np.float32),
+        )
 
         # Asset Cache (ADR-003): Pre-decode and resize all scans and backgrounds into RAM
         self._clean_scans_cache: List[np.ndarray] = []
@@ -172,21 +190,31 @@ class SyntheticSampleGenerator:
         self,
         clean_scan_idx: Optional[int] = None,
         background_idx: Optional[int] = None,
-        photometrics_off: Optional[bool] = None
+        photometrics_off: Optional[bool] = None,
+        task: str = "all"
     ) -> Dict[str, Any]:
         """
         Generate one synthetic training sample.
+
+        Args:
+            task: which outputs are needed — "all" (default), "enhancement" or "corner".
+                The unneeded halves are skipped: an enhancement sample does not render the
+                four Gaussian heatmaps, a corner sample does not run the inverse warp.
+                The RNG draw sequence is identical either way, so a given seed produces the
+                same geometry and degradations regardless of `task`.
 
         Returns:
             Dict containing:
                 - composite: (512, 512, 3) uint8 BGR
                 - corners: (4, 2) float32 in [TL, TR, BR, BL] order
-                - enhance_input: (512, 512, 3) uint8 BGR
-                - enhance_target: (512, 512, 3) uint8 BGR
-                - heatmaps: (4, 512, 512) float32
+                - enhance_input: (512, 512, 3) uint8 BGR   (None when task == "corner")
+                - enhance_target: (512, 512, 3) uint8 BGR  (None when task == "corner")
+                - heatmaps: (4, 512, 512) float32          (None when task == "enhancement")
                 - H: (3, 3) float64 homography matrix (scan -> composite)
                 - params: dict of sampled degradation parameters
         """
+        if task not in ("all", "enhancement", "corner"):
+            raise ValueError(f"Invalid task: {task}. Must be 'all', 'enhancement' or 'corner'.")
         if photometrics_off is None:
             photometrics_off = self.photometrics_off_default
 
@@ -311,9 +339,12 @@ class SyntheticSampleGenerator:
                 use_radial = bool(self.rng.rand() > 0.5)
                 params["illumination_radial"] = use_radial
 
-                xs = np.linspace(-1.0, 1.0, w, dtype=np.float32)
-                ys = np.linspace(-1.0, 1.0, h, dtype=np.float32)
-                grid_x, grid_y = np.meshgrid(xs, ys)
+                # Precomputed in __init__: the grid is a constant of the canvas size, and
+                # rebuilding it here allocated and filled 2 MB per sample in the pipeline's
+                # bottleneck stage. np.linspace is deterministic, so the values are
+                # bit-identical to the per-sample version — the degradation distribution
+                # is unchanged and the frozen sets stay valid.
+                grid_x, grid_y = self._grid_x, self._grid_y
 
                 if use_radial:
                     cx, cy = self.rng.uniform(-0.5, 0.5, size=2)
@@ -349,9 +380,14 @@ class SyntheticSampleGenerator:
                     shadow_blurred = cv2.GaussianBlur(shadow_mask.astype(np.float32) / 255.0, (blur_k, blur_k), 0)
                     composite_f32 *= (1.0 - opacity * shadow_blurred[:, :, None])
 
-                # Safety floor: ensure no pixel region is darkened below
-                # min_pixel_multiplier of its original value. This prevents
-                # the gradient × shadow stack from producing all-black areas.
+                # Worst case here is grad_low ~0.65 times two shadows at opacity 0.4,
+                # i.e. ~0.23x — dim, but a multiplicative dim preserves relative
+                # contrast, so the text is attenuated rather than destroyed and the
+                # network can recover it. Deliberately left unclamped: ADR-004 §3 wants
+                # ranges *wider* than the observed real-photo distribution, and a floor
+                # here would cut exactly the tail the hidden test set may contain.
+                # (`min_pixel_multiplier` used to be read from config, described in a
+                # comment as such a floor, and never actually applied to anything.)
                 composite_f32 = np.clip(composite_f32, 0.0, 255.0)
 
             # -----------------------------------------------------------------
@@ -411,15 +447,26 @@ class SyntheticSampleGenerator:
         # ---------------------------------------------------------------------
         # Dual Output & Homography Rectification (REQ-08, REQ-35)
         # ---------------------------------------------------------------------
-        # enhance_input: composite warped back using exact matrix inverse H_inv (REQ-35)
-        enhance_input = cv2.warpPerspective(comp_uint8, H_inv, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        want_enhancement = task in ("all", "enhancement")
+        want_corner = task in ("all", "corner")
 
-
-        # enhance_target: clean scan resized to 512x512, NEVER photometrically degraded (REQ-35)
-        enhance_target = clean_scan.copy()
+        if want_enhancement:
+            # enhance_input: composite warped back using exact matrix inverse H_inv (REQ-35)
+            enhance_input = cv2.warpPerspective(
+                comp_uint8, H_inv, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
+            )
+            # enhance_target: clean scan resized to 512x512, NEVER photometrically degraded (REQ-35)
+            enhance_target = clean_scan
+        else:
+            enhance_input = None
+            enhance_target = None
 
         # Render heatmaps for corner detector Task 2B (ADR-008)
-        heatmaps = render_heatmaps(target_corners, canvas_size=self.canvas_size, sigma=8.0)
+        heatmaps = (
+            render_heatmaps(target_corners, canvas_size=self.canvas_size, sigma=self.heatmap_sigma)
+            if want_corner
+            else None
+        )
 
         return {
             "composite": comp_uint8,               # uint8 BGR (512, 512, 3)

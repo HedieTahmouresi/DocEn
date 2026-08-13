@@ -1,0 +1,20 @@
+# Environment profile: Google Colab Tesla T4 (15 GB VRAM, ~2 vCPU).
+# Primary training environment (ADR-001).
+device: cuda
+amp: true
+
+# Colab gives ~2 vCPUs; more workers than that thrashes rather than helps.
+num_workers: 2
+
+# Measured VRAM without AMP: 1.62 GB/sample for fwd+bwd at 512x512, base=64, levels=4.
+# AMP roughly halves activation memory, so batch 8 lands near 7 GB with headroom.
+# batch 16 was the training-spec's starting suggestion but does not fit measured usage;
+# training-spec §2 explicitly sanctions dropping to 8. Keep this identical across all four
+# ablation runs — batch size changes BatchNorm statistics and would confound the comparison.
+batch_size: 8
+val_batch_size: 16
+
+# NHWC lets cuDNN reach Turing's tensor-core convolution kernels without transposing
+# before every conv. Mathematically identical — it is a memory layout, not a change to
+# the computation. Turn it off if anything looks numerically odd; it is a pure speed knob.
+channels_last: true

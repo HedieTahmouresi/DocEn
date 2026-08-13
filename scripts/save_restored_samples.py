@@ -1,58 +1,93 @@
-"""Save sample restored document images to disk for inspection."""
+"""Save full-resolution restored document samples to disk for inspection [REQ-44].
 
-import os
-import torch
-import numpy as np
+Writes, per sample: the degraded input, the clean target, and one restoration per loss
+variant. The input and target are always written un-standardised — ADR-009's trap is
+that a standardised tensor saved raw is a contrast-mangled image, not the degraded
+photo the reader is being asked to compare against.
+"""
+
 from pathlib import Path
+
+import numpy as np
+import torch
+
 from model import EnhancementNet
-from src.data.datasets import FrozenEvalDataset
+from src.data.datasets import BaselineDataset, FrozenEvalDataset
+from src.data.normalization import resolve_from_checkpoint
 from src.utils.io import save_image
 
+RUNS = {
+    "MSE": "exp-005_enh_mse",
+    "L1": "exp-006_enh_l1",
+    "L1_MSSSIM": "exp-007_enh_l1msssim",
+    "L1_MSSSIM_Sobel": "exp-008_enh_l1msssim_sobel",
+}
 
-def main():
+
+def load_variant(run_dir: Path, frozen_dir: Path, device: torch.device):
+    """Load a checkpoint together with the eval dataset matching its training-time input."""
+    ckpt_path = run_dir / "checkpoints" / "best.pt"
+    if not ckpt_path.exists():
+        ckpt_path = run_dir / "checkpoints" / "last.pt"
+    if not ckpt_path.exists():
+        return None
+
+    # weights_only defaults to True from torch 2.6; the checkpoint carries a config dict.
+    ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
+    cfg = ckpt.get("config", {})
+    m_cfg = cfg.get("model", {})
+
+    model = EnhancementNet(
+        base_channels=m_cfg.get("base_channels", 64),
+        levels=m_cfg.get("levels", 4),
+        out_ch=m_cfg.get("out_channels", 3),
+        upsample=m_cfg.get("upsample", "transpose"),
+    ).to(device)
+    model.load_state_dict(ckpt["model_state_dict"])
+    model.eval()
+
+    standardize, mean, std = resolve_from_checkpoint(cfg)
+    dataset = FrozenEvalDataset(
+        frozen_dir=frozen_dir, task="enhancement", normalize=standardize, mean=mean, std=std
+    )
+    return model, dataset
+
+
+def to_uint8(chw: np.ndarray) -> np.ndarray:
+    """CHW float in [0, 1] -> HWC uint8 RGB, which is what save_image expects."""
+    return (np.clip(chw.transpose(1, 2, 0), 0.0, 1.0) * 255.0).round().astype(np.uint8)
+
+
+def main(num_samples: int = 3):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     out_dir = Path("outputs/figures/restored_samples")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    val_dataset = FrozenEvalDataset(frozen_dir="data/frozen/val", task="enhancement")
+    frozen_dir = Path("data/frozen/val")
+    display_dataset = BaselineDataset(frozen_dir=frozen_dir)  # always un-standardised
 
-    runs = {
-        "MSE": Path("runs/exp-001_enh_mse"),
-        "L1": Path("runs/exp-002_enh_l1"),
-        "L1_MSSSIM": Path("runs/exp-003_enh_l1msssim"),
-        "L1_MSSSIM_Sobel": Path("runs/exp-004_enh_l1msssim_sobel"),
-    }
+    variants = {}
+    for name, run_name in RUNS.items():
+        loaded = load_variant(Path("runs") / run_name, frozen_dir, device)
+        if loaded is not None:
+            variants[name] = loaded
 
-    models = {}
-    for name, run_dir in runs.items():
-        ckpt_path = run_dir / "checkpoints" / "best.pt"
-        if not ckpt_path.exists():
-            ckpt_path = run_dir / "checkpoints" / "last.pt"
-        if ckpt_path.exists():
-            ckpt = torch.load(ckpt_path, map_location=device)
-            m_cfg = ckpt.get("config", {}).get("model", {})
-            base_ch = m_cfg.get("base_channels", 64)
-            levels = m_cfg.get("levels", 4)
-            out_ch = m_cfg.get("out_channels", 3)
-            upsample = m_cfg.get("upsample", "transpose")
-            m = EnhancementNet(base_channels=base_ch, levels=levels, out_ch=out_ch, upsample=upsample).to(device)
-            m.load_state_dict(ckpt["model_state_dict"])
-            m.eval()
-            models[name] = m
+    if not variants:
+        print("No trained checkpoints found under runs/ — nothing to restore.")
+        return
 
-    for idx in range(3):  # Save 3 sample documents
-        batch = val_dataset[idx]
-        inp = batch["input"].unsqueeze(0).to(device)
-        tgt = batch["target"].numpy().transpose(1, 2, 0)  # [H, W, 3] in [0, 1]
+    with torch.no_grad():
+        for idx in range(min(num_samples, len(display_dataset))):
+            display = display_dataset[idx]
+            save_image(to_uint8(display["target"].numpy()), out_dir / f"sample_{idx + 1}_target.png")
+            save_image(
+                to_uint8(display["input"].numpy()), out_dir / f"sample_{idx + 1}_degraded_input.png"
+            )
 
-        save_image(np.clip(tgt, 0.0, 1.0), str(out_dir / f"sample_{idx+1}_target.png"))
-        save_image(np.clip(batch["input"].numpy().transpose(1, 2, 0), 0.0, 1.0), str(out_dir / f"sample_{idx+1}_degraded_input.png"))
-
-        with torch.no_grad():
-            for name, m in models.items():
-                pred = m(inp).squeeze(0).cpu().numpy().transpose(1, 2, 0)
-                pred_img = np.clip(pred, 0.0, 1.0)
-                save_image(pred_img, str(out_dir / f"sample_{idx+1}_restored_{name}.png"))
+            for name, (model, dataset) in variants.items():
+                model_input = dataset[idx]["input"].unsqueeze(0).to(device)
+                pred = model(model_input).squeeze(0).cpu().numpy()
+                save_image(to_uint8(pred), out_dir / f"sample_{idx + 1}_restored_{name}.png")
 
     print(f"Saved individual restored document samples to {out_dir}/")
 

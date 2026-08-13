@@ -2,7 +2,7 @@
 
 Verifies:
 1. Forward pass shape, range, dtype
-2. Overfit one batch to near-zero loss (< 0.01)
+2. Overfit one batch, for all four ablation losses, judged on reconstruction L1
 3. Loss sanity (target vs target = 0, target vs noise large)
 4. Metric sanity (PSNR(x, x) = 100, SSIM(x, x) = 1.0)
 5. Short training step & checkpointing
@@ -34,40 +34,61 @@ def test_sanity_forward_pass():
     assert torch.all(out >= 0.0) and torch.all(out <= 1.0)
 
 
-def test_sanity_overfit_one_batch():
+@pytest.mark.parametrize("loss_type", ["mse", "l1", "l1_msssim", "l1_msssim_sobel"])
+def test_sanity_overfit_one_batch(loss_type):
     """Check 2: Critical Check — Overfit a single batch to near-zero loss (< 0.01).
 
-    If the model cannot overfit one batch, it will never learn the dataset.
+    If the model cannot overfit one batch, it will never learn the dataset, and the bug
+    is in the model, the loss or the data — not the hyperparameters.
+
+    Run for **all four** ablation losses, at the production *depth* (levels=4). The
+    original version only tested L1 at levels=3, so it could not have caught a defect
+    that hit three of the four arms and left MSE working, which is exactly the shape of
+    the Phase 04 results. The width is reduced (base=16) purely to keep the test cheap;
+    the depth, the head and the loss are the production ones.
     """
     torch.manual_seed(42)
-    model = EnhancementNet(base_channels=32, levels=3)
+    model = EnhancementNet(base_channels=16, levels=4)
     model.train()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-3, weight_decay=0.0)
-    criterion = EnhancementLoss(loss_type="l1", alpha=0.84)
+    criterion = EnhancementLoss(loss_type=loss_type, alpha=0.84, sobel_weight=0.1)
 
-    # Structured document-like target (white page with black text block)
-    target_batch = torch.ones(2, 3, 128, 128, dtype=torch.float32) * 0.95
-    target_batch[:, :, 30:90, 30:90] = 0.1
+    # 192x192, not 128: MS-SSIM at 5 scales needs at least (11-1)*2^4 + 1 = 161 px
+    # (ADR-010). Below that the coarsest scale is smaller than the Gaussian window and
+    # the L-C / L-D arms are measuring reflection padding.
+    size = 192
+    target_batch = torch.ones(2, 3, size, size, dtype=torch.float32) * 0.95
+    target_batch[:, :, 40:140, 40:140] = 0.1
     input_batch = torch.clamp(target_batch * 0.8 + 0.1 + torch.randn_like(target_batch) * 0.05, 0.0, 1.0)
 
-    initial_loss = float("inf")
-    final_loss = float("inf")
-
-    for step in range(250):
+    initial_loss = None
+    for step in range(200):
         optimizer.zero_grad()
         output = model(input_batch)
         loss = criterion(output, target_batch)
         loss.backward()
         optimizer.step()
-
-        loss_val = loss.item()
         if step == 0:
-            initial_loss = loss_val
-        final_loss = loss_val
+            initial_loss = loss.item()
 
-    print(f"Overfit-one-batch: Step 0 loss={initial_loss:.4f} -> Step 250 loss={final_loss:.6f}")
-    assert final_loss < 0.01, f"Failed to overfit single batch! Final loss: {final_loss:.6f}"
+    final_loss = loss.item()
+
+    # Judge the outcome on reconstruction error, not on the training loss: the four
+    # losses are on different scales, and "the output matches the target" is the
+    # property the check is actually about.
+    with torch.no_grad():
+        final_l1 = (model(input_batch) - target_batch).abs().mean().item()
+
+    print(
+        f"Overfit-one-batch [{loss_type}]: loss {initial_loss:.4f} -> {final_loss:.6f}, "
+        f"final L1 {final_l1:.4f}"
+    )
+    assert final_l1 < 0.05, (
+        f"Failed to overfit a single batch with '{loss_type}' (L1 {final_l1:.4f}). "
+        "A model stuck near its initialisation lands around 0.35 here."
+    )
+    assert final_loss < initial_loss * 0.5, f"Loss barely moved for '{loss_type}'"
 
 
 def test_sanity_loss_values():

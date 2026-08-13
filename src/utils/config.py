@@ -65,23 +65,33 @@ def load_config(
     else:
         base_path = Path(base_file)
 
+    if not base_path.exists():
+        raise FileNotFoundError(f"Base config not found: {base_path}")
+
     config = load_yaml(base_path)
 
-    env_path = root_dir / "configs" / "env" / f"{env}.yaml"
-    if env_path.exists():
-        env_config = load_yaml(env_path)
-        config = deep_merge(config, env_config)
+    # A missing env profile used to be skipped silently, which meant `--env colab_t4`
+    # quietly resolved to device=cpu / amp=false. Fail loudly instead.
+    if env:
+        env_path = root_dir / "configs" / "env" / f"{env}.yaml"
+        if not env_path.exists():
+            available = sorted(p.stem for p in (root_dir / "configs" / "env").glob("*.yaml"))
+            raise FileNotFoundError(
+                f"Environment profile '{env}' not found at {env_path}. Available: {available}"
+            )
+        config = deep_merge(config, load_yaml(env_path))
 
     if exp_file:
         exp_path = Path(exp_file)
         if not exp_path.exists():
             exp_path = root_dir / "configs" / "exp" / exp_file
-        if not exp_path.exists() and not exp_file.endswith(".yaml"):
+        if not exp_path.exists() and not str(exp_file).endswith(".yaml"):
             exp_path = root_dir / "configs" / "exp" / f"{exp_file}.yaml"
 
-        if exp_path.exists():
-            exp_config = load_yaml(exp_path)
-            config = deep_merge(config, exp_config)
+        if not exp_path.exists():
+            raise FileNotFoundError(f"Experiment config not found: {exp_file}")
+
+        config = deep_merge(config, load_yaml(exp_path))
 
     config = resolve_paths(config, root_dir=root_dir)
     return config

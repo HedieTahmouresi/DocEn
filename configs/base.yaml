@@ -100,7 +100,6 @@ generator:
     - 91
     shadow_probability: 0.4
     probability: 0.7
-    min_pixel_multiplier: 0.35
   sensor:
     blur_kernel:
     - 3
@@ -126,6 +125,10 @@ generator:
   debug:
     photometrics_off: false
 seed: 42
+data:
+  # ADR-009: standardise the model input with the training-split statistics below;
+  # the target, the output and every metric stay in [0, 1].
+  standardize: true
 normalization:
   mean:
   - 0.8282

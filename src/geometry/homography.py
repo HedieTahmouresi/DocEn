@@ -250,12 +250,16 @@ def rectify_document(
     # Compute homography
     H_matrix = compute_homography(corners, dst_corners)
 
-    # Warp image
+    # INTER_CUBIC + BORDER_REPLICATE deliberately match the generator's inverse warp
+    # (src/data/generator.py). Rectifying real photos with a different resampler than the
+    # one that produced every training pair adds an avoidable sim2real gap: bilinear is
+    # visibly softer on 1-3 px text strokes than bicubic.
     rectified_bgr = cv2.warpPerspective(
         cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR),
         H_matrix,
         (target_w, target_h),
-        flags=cv2.INTER_LINEAR
+        flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_REPLICATE,
     )
 
     return cv2.cvtColor(rectified_bgr, cv2.COLOR_BGR2RGB)

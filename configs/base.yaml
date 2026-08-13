@@ -126,6 +126,10 @@ generator:
   debug:
     photometrics_off: false
 seed: 42
+data:
+  # ADR-009: standardise the model input with the training-split statistics below;
+  # the target, the output and every metric stay in [0, 1].
+  standardize: true
 normalization:
   mean:
   - 0.8282

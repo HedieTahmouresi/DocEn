@@ -14,8 +14,9 @@ model:
 
 data:
   resolution: 512
-  samples_per_epoch: 1000
-  batch_size: 16
+  samples_per_epoch: 2000
+  # batch_size lives in configs/env/*.yaml: it is a VRAM property, not an
+  # experiment property. All four ablation runs must use the same profile.
   frozen_version: v1
 
 loss:
@@ -27,5 +28,5 @@ optim:
   lr: 1.0e-3
   weight_decay: 0.0
   scheduler: cosine
-  epochs: 20
+  epochs: 40
   grad_clip: 1.0

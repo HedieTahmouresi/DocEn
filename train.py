@@ -12,6 +12,7 @@ Performs end-to-end training of enhancement and corner networks with:
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 import time
@@ -24,6 +25,8 @@ from tqdm import tqdm
 
 from model import EnhancementNet, CornerRegNet, CornerHeatmapNet
 from src.data.datasets import SyntheticTrainDataset, FrozenEvalDataset
+from src.data.freeze import get_git_commit_hash
+from src.data.normalization import resolve as resolve_normalization
 from src.losses.composite import EnhancementLoss
 from src.metrics.image import calculate_psnr, calculate_ssim
 from src.utils.config import load_config, save_resolved_config
@@ -50,6 +53,23 @@ def parse_args():
         type=str,
         default=None,
         help="Path to checkpoint file to resume training from",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help="Override optim.epochs (smoke runs only — never for a run that goes in the report)",
+    )
+    parser.add_argument(
+        "--samples-per-epoch",
+        type=int,
+        default=None,
+        help="Override data.samples_per_epoch (smoke runs only)",
+    )
+    parser.add_argument(
+        "--allow-cpu-fallback",
+        action="store_true",
+        help="Permit falling back to CPU when the profile asks for CUDA and it is unavailable",
     )
     return parser.parse_args()
 
@@ -174,6 +194,13 @@ def main():
     # Load configuration
     cfg = load_config(env=args.env, exp_file=args.config)
 
+    # CLI overrides, applied before anything reads the config so the resolved
+    # config written to the run directory reflects what actually ran.
+    if args.epochs is not None:
+        cfg.setdefault("optim", {})["epochs"] = args.epochs
+    if args.samples_per_epoch is not None:
+        cfg.setdefault("data", {})["samples_per_epoch"] = args.samples_per_epoch
+
     # Global seeding
     seed = cfg.get("run", {}).get("seed", 1337)
     seed_everything(seed)
@@ -185,28 +212,45 @@ def main():
     ckpt_dir = run_dir / "checkpoints"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save resolved config
-    save_resolved_config(cfg, run_dir)
-
-    # Set device
+    # Set device.
+    # A silent CPU fallback is how four "GPU" ablation runs previously came back
+    # unusable, so an unavailable CUDA device is an error unless it is asked for.
     device_str = cfg.get("device") or cfg.get("env", {}).get("device", "cpu")
     if device_str == "cuda":
+        reason = None
         if not torch.cuda.is_available():
-            device_str = "cpu"
+            reason = "torch.cuda.is_available() is False"
         else:
             try:
                 _ = torch.zeros(1).cuda()
-            except Exception:
-                print("Warning: CUDA device detected but incompatible on this local hardware. Falling back to CPU.")
-                device_str = "cpu"
+            except Exception as exc:
+                reason = f"CUDA is present but unusable on this hardware: {exc}"
+
+        if reason is not None:
+            msg = f"Profile '{args.env}' requests device=cuda but {reason}."
+            if not args.allow_cpu_fallback:
+                raise RuntimeError(
+                    msg + " Re-run with --env local_cpu for a deliberate CPU run, "
+                    "or --allow-cpu-fallback to accept the downgrade."
+                )
+            print(f"WARNING: {msg} Falling back to CPU because --allow-cpu-fallback was given.")
+            device_str = "cpu"
+            cfg["device"] = "cpu"
 
     device = torch.device(device_str)
 
     amp_val = cfg.get("amp") if "amp" in cfg else cfg.get("env", {}).get("amp", False)
     use_amp = bool(amp_val) and device.type == "cuda"
+    cfg["amp"] = use_amp
+
+    # training-spec §10: a metric without a commit cannot be reproduced.
+    cfg["git_commit"] = get_git_commit_hash()
+
+    # Written after device/AMP resolution so the run directory records what actually ran.
+    save_resolved_config(cfg, run_dir)
 
     print(f"=== Starting Run {run_id}: {exp_name} ===")
-    print(f"Device: {device} (AMP={use_amp}), Seed: {seed}")
+    print(f"Device: {device} (AMP={use_amp}), Seed: {seed}, Commit: {cfg['git_commit'][:8]}")
     print(f"Run directory: {run_dir}")
 
     # Build model
@@ -241,25 +285,41 @@ def main():
     data_cfg = cfg.get("data", {})
     data_root = Path(cfg.get("data_root", "data"))
 
+    resolution = data_cfg.get("resolution", 512)
+    target_size = (resolution, resolution)
+
+    # ADR-009: standardise the input, leave the target in [0, 1]. mean/std come from
+    # the training split only (computed once in Phase 03 and stored in base.yaml).
+    standardize, norm_mean, norm_std = resolve_normalization(cfg)
+
     train_dataset = SyntheticTrainDataset(
         scans_dir=data_root / "clean_scans",
         bg_dir=data_root / "backgrounds",
         splits_file=data_root / "splits" / "splits.json",
         split="train",
         task="enhancement",
-        samples_per_epoch=data_cfg.get("samples_per_epoch", 4000),
-        target_size=(data_cfg.get("resolution", 512), data_cfg.get("resolution", 512)),
-        generator_config=cfg.get("generator", None),
+        samples_per_epoch=data_cfg.get("samples_per_epoch", 2000),
+        target_size=target_size,
+        generator_config=cfg,
         seed=seed,
+        normalize=standardize,
+        mean=norm_mean,
+        std=norm_std,
     )
 
     frozen_val_dir = Path(data_cfg.get("frozen_val_dir", data_root / "frozen" / "val"))
-    val_dataset = FrozenEvalDataset(frozen_dir=frozen_val_dir, task="enhancement")
+    val_dataset = FrozenEvalDataset(
+        frozen_dir=frozen_val_dir,
+        task="enhancement",
+        target_size=target_size,
+        normalize=standardize,
+        mean=norm_mean,
+        std=norm_std,
+    )
 
     num_workers = cfg.get("num_workers") if "num_workers" in cfg else cfg.get("env", {}).get("num_workers", 2)
-    batch_size = cfg.get("batch_size") or data_cfg.get("batch_size", 16)
+    batch_size = cfg.get("batch_size") or data_cfg.get("batch_size", 8)
     val_batch_size = cfg.get("val_batch_size") or (batch_size * 2)
-
 
     train_loader = DataLoader(
         train_dataset,
@@ -268,6 +328,13 @@ def main():
         num_workers=num_workers,
         worker_init_fn=worker_init_fn,
         pin_memory=(device.type == "cuda"),
+        # A trailing batch of size 1 makes BatchNorm throw in train mode, and a short
+        # final batch skews the epoch's BatchNorm statistics either way.
+        drop_last=True,
+        # Must stay False: the workers are what re-seed the generator per epoch
+        # (see SyntheticTrainDataset.set_epoch), and persistent workers are only
+        # initialised once.
+        persistent_workers=False,
     )
 
     val_loader = DataLoader(
@@ -276,6 +343,9 @@ def main():
         shuffle=False,
         num_workers=num_workers,
         pin_memory=(device.type == "cuda"),
+        # The frozen set never changes, so keeping the workers alive keeps their
+        # decoded-PNG cache warm instead of rebuilding it every epoch.
+        persistent_workers=(num_workers > 0),
     )
 
     # Checkpoint resume state
@@ -288,7 +358,9 @@ def main():
         if not resume_path.exists():
             raise FileNotFoundError(f"Resume checkpoint not found: {resume_path}")
         print(f"Resuming training from checkpoint: {resume_path}")
-        checkpoint = torch.load(resume_path, map_location=device)
+        # weights_only defaults to True from torch 2.6; our checkpoints carry the
+        # resolved config dict, so loading them requires the full unpickler.
+        checkpoint = torch.load(resume_path, map_location=device, weights_only=False)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
@@ -301,6 +373,7 @@ def main():
 
     # CSV Logging setup
     csv_file = run_dir / "metrics.csv"
+    json_file = run_dir / "metrics.json"
     csv_exists = csv_file.exists() and args.resume is not None
     csv_fieldnames = ["epoch", "train_loss", "val_loss", "val_psnr", "val_ssim", "lr", "epoch_seconds"]
 
@@ -309,7 +382,16 @@ def main():
             writer = csv.DictWriter(f, fieldnames=csv_fieldnames)
             writer.writeheader()
 
+    # On resume, carry the earlier epochs forward. Starting from [] used to truncate
+    # metrics.json to the post-resume epochs only, which loses half a REQ-22 loss curve
+    # every time a Colab session dies.
     metrics_log = []
+    if args.resume and json_file.exists():
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                metrics_log = [row for row in json.load(f) if int(row["epoch"]) < start_epoch]
+        except (json.JSONDecodeError, KeyError, ValueError):
+            print(f"Warning: could not parse {json_file}; starting the JSON log fresh.")
 
     # Training loop
     grad_clip = optim_cfg.get("grad_clip", 1.0)
@@ -317,8 +399,8 @@ def main():
     for epoch in range(start_epoch, epochs + 1):
         t0 = time.time()
 
-        # Update dataset epoch seed for variety
-        train_dataset.epoch = epoch
+        # Re-seed the generator so this epoch composites fresh samples (REQ-11).
+        train_dataset.set_epoch(epoch)
 
         train_loss = train_one_epoch(
             model=model,
@@ -347,6 +429,14 @@ def main():
         val_psnr = val_metrics["val_psnr"]
         val_ssim = val_metrics["val_ssim"]
 
+        # MS-SSIM under AMP is the classic source of a mid-run NaN (training-spec §3).
+        # Stopping here beats burning the rest of a Colab session on a dead run.
+        if not (math.isfinite(train_loss) and math.isfinite(val_loss)):
+            raise RuntimeError(
+                f"Non-finite loss at epoch {epoch} (train={train_loss}, val={val_loss}). "
+                "See .agents/05-skills/training-diagnostics.md before relaunching."
+            )
+
         print(
             f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.1f}s] | "
             f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | "
@@ -369,7 +459,7 @@ def main():
             writer.writerow(row)
 
         # JSON metrics update
-        with open(run_dir / "metrics.json", "w", encoding="utf-8") as f:
+        with open(json_file, "w", encoding="utf-8") as f:
             json.dump(metrics_log, f, indent=2)
 
         # Checkpointing

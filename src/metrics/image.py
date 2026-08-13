@@ -4,7 +4,6 @@ Calculates Peak Signal-to-Noise Ratio (PSNR) and Structural Similarity Index (SS
 between predicted document images and ground truth clean targets.
 """
 
-import math
 import torch
 
 from src.losses.ssim import ssim
@@ -34,20 +33,17 @@ def calculate_psnr(
     pred_f32 = pred.to(torch.float32)
     target_f32 = target.to(torch.float32)
 
-    # Compute MSE per image in batch
+    # Per-image MSE, never batch-pooled: pooling first would let one easy image
+    # flatter a batch that contains a failure (evaluation-spec §1).
     mse = torch.mean((pred_f32 - target_f32) ** 2, dim=[-3, -2, -1])
 
-    # Guard against identical images (MSE = 0 -> PSNR = inf)
-    psnr_vals = []
-    for m in mse:
-        val = m.item()
-        if val <= eps:
-            psnr_vals.append(100.0)  # Standard high cap for identical images
-        else:
-            psnr = 10.0 * math.log10((data_range ** 2) / val)
-            psnr_vals.append(psnr)
+    # Identical images give MSE = 0 -> PSNR = inf; cap at 100 dB, as skimage-style
+    # reference implementations do. Computed on-device in one shot rather than with
+    # a .item() per image, which forces a GPU sync for every sample of every epoch.
+    psnr = 10.0 * torch.log10((data_range ** 2) / mse.clamp(min=eps))
+    psnr = torch.where(mse <= eps, torch.full_like(psnr, 100.0), psnr)
 
-    return float(sum(psnr_vals) / len(psnr_vals))
+    return float(psnr.mean().item())
 
 
 def calculate_ssim(pred: torch.Tensor, target: torch.Tensor) -> float:

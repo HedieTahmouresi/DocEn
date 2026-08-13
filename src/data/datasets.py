@@ -108,11 +108,17 @@ class SyntheticTrainDataset(Dataset):
     def set_epoch(self, epoch: int) -> None:
         """Update the epoch so each epoch draws fresh samples.
 
-        With `num_workers > 0` the re-seed happens in `worker_init_fn`, which reads
-        `self.epoch` out of the pickled dataset. With `num_workers == 0` that hook is
-        never called, so without the re-seed below every epoch would replay the exact
-        same `samples_per_epoch` composites — an infinite-data pipeline silently
-        collapsed into a fixed, memorisable set.
+        Two paths, because the loaders use persistent workers:
+
+        - `num_workers > 0`: the workers are created once, on the first iteration, and
+          `worker_init_fn` seeds each of them from `self.epoch` at that moment. After
+          that their RNG streams simply *continue* across epochs, which is exactly what
+          fresh-samples-every-epoch means. Calling this method later has no effect on
+          them, and does not need to.
+        - `num_workers == 0`: `worker_init_fn` is never called at all, so without the
+          re-seed below every epoch would replay the identical `samples_per_epoch`
+          composites — an infinite-data pipeline silently collapsed into a fixed,
+          memorisable set.
         """
         self.epoch = epoch
         self.rng = np.random.default_rng(self.seed + epoch)

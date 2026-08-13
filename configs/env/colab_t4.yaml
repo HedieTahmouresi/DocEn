@@ -13,3 +13,8 @@ num_workers: 2
 # ablation runs — batch size changes BatchNorm statistics and would confound the comparison.
 batch_size: 8
 val_batch_size: 16
+
+# NHWC lets cuDNN reach Turing's tensor-core convolution kernels without transposing
+# before every conv. Mathematically identical — it is a memory layout, not a change to
+# the computation. Turn it off if anything looks numerically odd; it is a pure speed knob.
+channels_last: true

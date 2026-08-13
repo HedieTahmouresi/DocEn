@@ -13,6 +13,16 @@ import numpy as np
 import torch
 
 
+def configure_cpu_threads(num_threads: int = 1) -> None:
+    """Configure CPU thread allocation in the parent process before forking workers.
+
+    Calling cv2.setNumThreads() inside a forked worker child process is undefined
+    behaviour in OpenCV and causes worker segmentation faults. Setting it in the parent
+    process ensures child processes inherit the single-thread setting safely across fork.
+    """
+    cv2.setNumThreads(num_threads)
+
+
 def seed_everything(seed: int = 42) -> None:
     """Set global random seeds across python, numpy, and torch."""
     random.seed(seed)
@@ -20,6 +30,7 @@ def seed_everything(seed: int = 42) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    configure_cpu_threads(1)
 
 
 def worker_init_fn(worker_id: int) -> None:
@@ -39,16 +50,6 @@ def worker_init_fn(worker_id: int) -> None:
     worker_info = torch.utils.data.get_worker_info()
     if worker_info is None:
         return
-
-    # Pin every worker to a single thread. OpenCV and torch each default to spawning
-    # threads for the whole machine, so N loader workers on a 2-vCPU Colab runtime end
-    # up oversubscribing the CPU several times over and spend their time in contention
-    # instead of in cv2.warpPerspective. The generator is the pipeline's bottleneck, so
-    # this is not a micro-optimisation. Neither call changes any pixel value: the OpenCV
-    # operations used here (warpPerspective, GaussianBlur, resize, imencode) are
-    # deterministic and independent of thread count.
-    cv2.setNumThreads(1)
-    torch.set_num_threads(1)
 
     dataset = worker_info.dataset
     base_seed = getattr(dataset, "seed", 42)

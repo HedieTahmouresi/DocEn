@@ -14,7 +14,7 @@ Corner order:
 import json
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 
 def cross_2d(v1: np.ndarray, v2: np.ndarray) -> float:

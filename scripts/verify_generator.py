@@ -172,13 +172,14 @@ def generate_figures_and_benchmark():
     areas = [p["area_fraction"] for p in param_records]
     rotations = [p["rotation_deg"] for p in param_records]
     perspectives = [p["perspective_strength"] for p in param_records]
-    contrasts = [p["contrast"] for p in param_records]
-    brightnesses = [p["brightness"] for p in param_records]
-    color_r = [p["color_cast_r"] for p in param_records]
-    color_b = [p["color_cast_b"] for p in param_records]
-    blur_sigmas = [p["blur_sigma"] for p in param_records]
-    noise_sigmas = [p["noise_sigma"] for p in param_records]
-    jpegs = [p["jpeg_quality"] for p in param_records]
+    # Probability-gated steps may not have all keys — use .get() with identity defaults
+    contrasts = [p.get("contrast", 1.0) for p in param_records]
+    brightnesses = [p.get("brightness", 0.0) for p in param_records]
+    color_r = [p.get("color_cast_r", 1.0) for p in param_records]
+    color_b = [p.get("color_cast_b", 1.0) for p in param_records]
+    blur_sigmas = [p.get("blur_sigma", 0.0) for p in param_records]
+    noise_sigmas = [p.get("noise_sigma", 0.0) for p in param_records]
+    jpegs = [p.get("jpeg_quality", 100) for p in param_records]
 
     fig, axes = plt.subplots(3, 3, figsize=(15, 12))
     fig.suptitle("Phase 02 Generator Parameter Histograms (1000 Samples)", fontsize=16, fontweight='bold')
@@ -187,12 +188,12 @@ def generate_figures_and_benchmark():
         ("Area Fraction", areas, (0.15, 0.95)),
         ("Rotation (deg)", rotations, (-25, 25)),
         ("Perspective Strength", perspectives, (0.0, 0.35)),
-        ("Contrast", contrasts, (0.4, 1.6)),
-        ("Brightness", brightnesses, (-50, 50)),
+        ("Contrast", contrasts, (0.55, 1.5)),
+        ("Brightness", brightnesses, (-40, 40)),
         ("Color Cast Red", color_r, (0.75, 1.25)),
-        ("Blur Sigma", blur_sigmas, (0.5, 3.0)),
-        ("Noise Sigma", noise_sigmas, (3.0, 30.0)),
-        ("JPEG Quality", jpegs, (20, 90)),
+        ("Blur Sigma", blur_sigmas, (0.5, 2.0)),
+        ("Noise Sigma", noise_sigmas, (3.0, 22.0)),
+        ("JPEG Quality", jpegs, (30, 85)),
     ]
 
     for idx, (title, vals, bounds) in enumerate(h_data):

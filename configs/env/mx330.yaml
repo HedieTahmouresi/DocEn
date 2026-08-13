@@ -1,0 +1,12 @@
+# Environment profile: NVIDIA GeForce MX330 laptop GPU (Pascal GP108, 4.23 GB VRAM).
+# Smoke tests only (ADR-001) — far too slow for the full ablation.
+device: cuda
+
+# Pascal has no usable tensor cores: AMP costs overhead for no gain (training-spec §3).
+amp: false
+num_workers: 2
+
+# Measured VRAM (2026-08-13): train fwd+bwd 1.62 GB/sample, eval no_grad 0.40 GB/sample.
+# batch 2 -> 3.24 GB train (fits 4.23 GB); batch 4 -> 6.48 GB (OOM).
+batch_size: 2
+val_batch_size: 4

@@ -11,10 +11,13 @@ build/
 *.pth
 
 # Virtual environments
-venv/
-env/
-.env/
-.venv/
+# NOTE: these are anchored to the repo root on purpose. An unanchored `env/`
+# also matches `configs/env/`, which is how the environment profiles ended up
+# silently untracked (and every `--env colab_t4` run silently fell back to CPU).
+/venv/
+/env/
+/.env/
+/.venv/
 
 # Local paths override
 paths.yaml

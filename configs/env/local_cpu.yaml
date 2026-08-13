@@ -1,0 +1,9 @@
+# Environment profile: CPU-only workstation (no usable GPU).
+# Used for smoke tests, dataset verification and figure generation — not for full runs.
+device: cpu
+amp: false
+num_workers: 4
+
+# Measured 1058 ms/step at batch 2, 512x512 (Phase 00 intake audit) — keep batches small.
+batch_size: 2
+val_batch_size: 4

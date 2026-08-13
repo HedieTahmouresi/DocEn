@@ -218,6 +218,7 @@ class FrozenEvalDataset(Dataset):
             self.mean_tensor = None
             self.std_tensor = None
 
+        self._cache = {}
         print(f"Loaded FrozenEvalDataset from {self.frozen_dir} ({len(self.sample_ids)} samples, task '{self.task}').")
 
     def __len__(self) -> int:
@@ -225,6 +226,8 @@ class FrozenEvalDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample_id = self.sample_ids[idx]
+        if sample_id in self._cache:
+            return self._cache[sample_id]
 
         comp_path = self.images_dir / f"{sample_id}_composite.png"
         enh_in_path = self.images_dir / f"{sample_id}_enh_input.png"
@@ -238,7 +241,6 @@ class FrozenEvalDataset(Dataset):
         comp_tensor = torch.from_numpy(comp_rgb.transpose(2, 0, 1)).float() / 255.0
         enh_in_tensor = torch.from_numpy(enh_in_rgb.transpose(2, 0, 1)).float() / 255.0
         enh_tgt_tensor = torch.from_numpy(enh_tgt_rgb.transpose(2, 0, 1)).float() / 255.0
-
 
         # Load corners in absolute px @ target_size
         corners_abs = np.array(self.corners_data[sample_id], dtype=np.float32)  # (4, 2)
@@ -257,7 +259,7 @@ class FrozenEvalDataset(Dataset):
             if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
                 input_tensor = (input_tensor - self.mean_tensor) / self.std_tensor
 
-            return {
+            res = {
                 "name": sample_id,
                 "input": input_tensor,
                 "target_corners": corners_tensor,
@@ -268,11 +270,14 @@ class FrozenEvalDataset(Dataset):
             if self.normalize and self.mean_tensor is not None and self.std_tensor is not None:
                 input_tensor = (input_tensor - self.mean_tensor) / self.std_tensor
 
-            return {
+            res = {
                 "name": sample_id,
                 "input": input_tensor,
                 "target": enh_tgt_tensor
             }
+
+        self._cache[sample_id] = res
+        return res
 
 
 class BaselineDataset(FrozenEvalDataset):

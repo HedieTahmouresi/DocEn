@@ -1,5 +1,4 @@
-"""
-Config loader and layering utility.
+"""Config loader and layering utility.
 
 Implements base -> env -> exp YAML configuration merging and environment path resolution.
 No absolute paths in committed code.
@@ -74,9 +73,12 @@ def load_config(
         config = deep_merge(config, env_config)
 
     if exp_file:
-        exp_path = root_dir / "configs" / "exp" / exp_file
+        exp_path = Path(exp_file)
+        if not exp_path.exists():
+            exp_path = root_dir / "configs" / "exp" / exp_file
         if not exp_path.exists() and not exp_file.endswith(".yaml"):
             exp_path = root_dir / "configs" / "exp" / f"{exp_file}.yaml"
+
         if exp_path.exists():
             exp_config = load_yaml(exp_path)
             config = deep_merge(config, exp_config)

@@ -146,7 +146,8 @@ def evaluate_epoch(
     total_ssim = 0.0
     num_samples = 0
 
-    for batch in dataloader:
+    pbar = tqdm(dataloader, desc="Validating", leave=False)
+    for batch in pbar:
         inputs = batch["input"].to(device, non_blocking=True)
         targets = batch["target"].to(device, non_blocking=True)
         b_size = inputs.size(0)
@@ -248,6 +249,7 @@ def main():
 
     num_workers = cfg.get("env", {}).get("num_workers", 2)
     batch_size = data_cfg.get("batch_size", 16)
+    val_batch_size = max(32, batch_size * 2)
 
     train_loader = DataLoader(
         train_dataset,
@@ -260,7 +262,7 @@ def main():
 
     val_loader = DataLoader(
         val_dataset,
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         shuffle=False,
         num_workers=num_workers,
         pin_memory=(device.type == "cuda"),

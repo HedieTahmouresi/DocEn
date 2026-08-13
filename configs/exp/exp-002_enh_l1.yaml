@@ -1,0 +1,30 @@
+run:
+  experiment_id: exp-002
+  name: enh_l1
+  seed: 1337
+  notes: "L-B variant: L1 loss"
+
+model:
+  arch: unet
+  base_channels: 64
+  levels: 4
+  out_channels: 3
+  upsample: transpose
+  dropout: 0.0
+
+data:
+  resolution: 512
+  samples_per_epoch: 4000
+  batch_size: 16
+  frozen_version: v1
+
+loss:
+  type: l1
+
+optim:
+  optimizer: adam
+  lr: 1.0e-3
+  weight_decay: 0.0
+  scheduler: cosine
+  epochs: 60
+  grad_clip: 1.0

@@ -16,7 +16,8 @@ backgrounds and degraded — and evaluated on real smartphone photos with hand-a
 
 ```
 model.py                    Public model API (re-exports src/models)
-train.py                    Training entry point for all three networks
+train.py                    Training entry point — one model
+train_ablation.py           Trains every arm of a loss ablation over one shared data stream
 configs/
   base.yaml                 Generator ranges, normalisation stats, paths
   env/{local_cpu,mx330,colab_t4}.yaml
@@ -83,16 +84,18 @@ python -m src.data.freeze
 python -m pytest tests/ -q
 
 # A short end-to-end smoke run
-python train.py --config configs/exp/exp-007_enh_l1msssim.yaml --env local_cpu \
-    --epochs 2 --samples-per-epoch 40
+python train_ablation.py --env local_cpu --epochs 2 --samples-per-epoch 40
 
-# The loss ablation (see notebooks/colab_train.ipynb for the Colab version)
+# The loss ablation — all four arms on one data stream
+# (see notebooks/colab_train.ipynb for the Colab version)
+python train_ablation.py --env colab_t4 \
+    --mirror-dir /content/drive/MyDrive/DocEn_runs --mirror-every 5
+
+# Resume an interrupted suite — continues every arm from its own last.pt
+python train_ablation.py --env colab_t4 --resume
+
+# One arm on its own, if you need it
 python train.py --config configs/exp/exp-005_enh_mse.yaml --env colab_t4
-python train.py --config configs/exp/exp-006_enh_l1.yaml --env colab_t4
-python train.py --config configs/exp/exp-007_enh_l1msssim.yaml --env colab_t4
-python train.py --config configs/exp/exp-008_enh_l1msssim_sobel.yaml --env colab_t4
-
-# Resume an interrupted run
 python train.py --config configs/exp/exp-005_enh_mse.yaml --env colab_t4 \
     --resume runs/exp-005_enh_mse/checkpoints/last.pt
 
@@ -100,6 +103,19 @@ python train.py --config configs/exp/exp-005_enh_mse.yaml --env colab_t4 \
 python -m scripts.evaluate_ablation
 python -m scripts.save_restored_samples
 ```
+
+### Why `train_ablation.py` exists
+
+The four arms differ only in the loss. Running `train.py` four times regenerates the same
+80,000 synthetic samples four times over, and the generator — not the GPU — is what sets the
+pace on a 2-vCPU Colab runtime. Training all four on one stream removes that redundancy, and
+makes the comparison *paired*: every arm sees the same batches in the same order, from
+identical initial weights. It refuses to start if the configs disagree on anything but the
+loss, which is the phase-04 gate item "identical seed, architecture, schedule, batch size and
+frozen sets" checked at launch rather than by eye.
+
+A NaN in one arm fails that arm alone; the others carry on. Estimated 2.5–3.5 h for the suite
+versus 5–6 h sequential — an estimate, not a measurement; check `epoch_seconds` after epoch 1.
 
 ## Conventions
 

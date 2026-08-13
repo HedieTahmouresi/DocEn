@@ -155,6 +155,14 @@ class SyntheticSampleGenerator:
             self.config.get("heatmap_sigma", gen_cfg.get("heatmap_sigma", 8.0))
         )
 
+        # Canvas-constant coordinate grid for the illumination gradient (step 4).
+        # Built once instead of per sample; the values are identical either way.
+        c_w, c_h = self.canvas_size
+        self._grid_x, self._grid_y = np.meshgrid(
+            np.linspace(-1.0, 1.0, c_w, dtype=np.float32),
+            np.linspace(-1.0, 1.0, c_h, dtype=np.float32),
+        )
+
         # Asset Cache (ADR-003): Pre-decode and resize all scans and backgrounds into RAM
         self._clean_scans_cache: List[np.ndarray] = []
         self._backgrounds_cache: List[np.ndarray] = []
@@ -331,9 +339,12 @@ class SyntheticSampleGenerator:
                 use_radial = bool(self.rng.rand() > 0.5)
                 params["illumination_radial"] = use_radial
 
-                xs = np.linspace(-1.0, 1.0, w, dtype=np.float32)
-                ys = np.linspace(-1.0, 1.0, h, dtype=np.float32)
-                grid_x, grid_y = np.meshgrid(xs, ys)
+                # Precomputed in __init__: the grid is a constant of the canvas size, and
+                # rebuilding it here allocated and filled 2 MB per sample in the pipeline's
+                # bottleneck stage. np.linspace is deterministic, so the values are
+                # bit-identical to the per-sample version — the degradation distribution
+                # is unchanged and the frozen sets stay valid.
+                grid_x, grid_y = self._grid_x, self._grid_y
 
                 if use_radial:
                     cx, cy = self.rng.uniform(-0.5, 0.5, size=2)

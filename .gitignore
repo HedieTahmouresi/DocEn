@@ -27,6 +27,7 @@ paths.yaml
 *~
 
 # Data (too large for git)
+*.zip
 data/clean_scans/
 data/backgrounds/
 data/real_photos/

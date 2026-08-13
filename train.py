@@ -258,7 +258,8 @@ def main():
 
     num_workers = cfg.get("num_workers") if "num_workers" in cfg else cfg.get("env", {}).get("num_workers", 2)
     batch_size = cfg.get("batch_size") or data_cfg.get("batch_size", 16)
-    val_batch_size = max(32, batch_size * 2)
+    val_batch_size = cfg.get("val_batch_size") or (batch_size * 2)
+
 
     train_loader = DataLoader(
         train_dataset,

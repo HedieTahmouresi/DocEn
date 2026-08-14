@@ -101,8 +101,9 @@ def generate_corner_overlay_samples(
             cv2.circle(overlay, (gx, gy), 9, (0, 0, 0), 1)
 
         out_path = output_dir / f"sample_{i+1:02d}_{photo_id}.png"
-        save_image(out_path, overlay)
+        save_image(overlay, out_path)
         print(f"  Saved sample overlay: {out_path}")
+
 
 
     print(f"\nAll corner overlay samples saved to: {output_dir}")

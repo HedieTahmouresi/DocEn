@@ -39,11 +39,26 @@ def load_model_from_ckpt(ckpt_path: Path, device: torch.device) -> Tuple[torch.n
     levels = cfg.get("model", {}).get("levels", 4)
     dropout = cfg.get("model", {}).get("dropout", 0.0)
 
+    # A checkpoint must be rebuilt with the architecture it was *trained* with, never
+    # with today's defaults. exp-009 predates both `spatial_pool` and `head_norm`, so an
+    # absent key means the legacy head — average pooling and no BatchNorm1d. Getting this
+    # wrong is not a silent error: head_norm adds parameters and load_state_dict raises.
+    model_cfg = cfg.get("model", {})
+    allow_dropout = bool(model_cfg.get("allow_dropout", dropout > 0.0))
+
     if arch == "corner_reg":
-        model = CornerRegNet(base_channels=base_ch, levels=levels, dropout=dropout)
+        model = CornerRegNet(
+            base_channels=base_ch, levels=levels, dropout=dropout,
+            allow_dropout=allow_dropout,
+            spatial_pool=model_cfg.get("spatial_pool", "avg"),
+            head_norm=model_cfg.get("head_norm", False),
+        )
     else:
-        upsample = cfg.get("model", {}).get("upsample", "transpose")
-        model = CornerHeatmapNet(base_channels=base_ch, levels=levels, upsample=upsample, dropout=dropout)
+        upsample = model_cfg.get("upsample", "transpose")
+        model = CornerHeatmapNet(
+            base_channels=base_ch, levels=levels, upsample=upsample,
+            dropout=dropout, allow_dropout=allow_dropout,
+        )
 
     model.load_state_dict(ckpt["model_state_dict"])
     model.to(device)

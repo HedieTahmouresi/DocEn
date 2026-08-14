@@ -29,10 +29,44 @@ Template: `state/templates/experiment-entry.md`.
 | exp-006 | Phase 04 | enh_l1 | exp-005 | **PASSED** — Val PSNR 23.8118 dB, SSIM 0.8347 |
 | exp-007 | Phase 04 | enh_l1msssim | exp-005 | **PASSED** — Val PSNR 24.0853 dB, SSIM 0.8491 |
 | exp-008 | Phase 04 | enh_l1msssim_sobel | exp-007 | **PASSED** — Val PSNR 23.9318 dB, SSIM 0.8497 (**SSIM winner**) |
-| exp-009 | Phase 06 | corner_approach_a | CornerRegNet coordinate regression | **FAILED / FC STUCK** — Val MCE 224.74 px (31.04%), Succ@1% 0.0%, Real MCE 232.68 px |
+| exp-009 | Phase 06 | corner_approach_a | CornerRegNet coordinate regression | **INVALID — collapsed head, not a result.** Val MCE 224.74 px, Succ@1% 0.0% |
 | exp-010 | Phase 06 | corner_approach_b | CornerHeatmapNet heatmap regression | **PASSED / WINNER** — Val MCE 1.05 px (0.14%), Succ@1% 99.8%, Real MCE 62.11 px |
+| exp-011 | Phase 06 | corner_a_fixed | exp-009 + max-pool + BatchNorm1d head + lr 3e-4 | *pending* |
+| exp-012 | Phase 07 | corner_b_control | exp-010 re-derived on the shared stream as the matched control | *pending* |
+| exp-013 | Phase 07 | corner_b_dropout | exp-012 + bottleneck Dropout2d p=0.2 | *pending* |
+| exp-014 | Phase 07 | enh_dropout | exp-008 + bottleneck Dropout2d p=0.2 | *pending* |
 
 
+
+### Why exp-009 is marked INVALID (2026-08-14, audit)
+
+It is **kept, not deleted**, and it is worth reporting — but it is a statement about a
+broken training run, not about coordinate regression, and it must not be presented as the
+`[REQ-30]` comparison.
+
+The output does not depend on the input. Three independent tells:
+
+- Per-corner errors are near-identical across two completely different image distributions
+  — synthetic test (500 samples) gives 152.4 / 156.8 / 159.5 / 430.2 px, real photos (30)
+  give 154.9 / 151.1 / 161.8 / 462.9 px.
+- Validation and test MCE agree to two decimals: 224.74 and 224.75 px.
+- 224.8 px is 0.44 in normalised coordinates — **worse than simply emitting the median
+  quad for every image**, which lands near 0.15–0.25. The research report's own baseline
+  reached 10.41 px with the same formulation.
+
+Diagnosis, in order of confidence: (1) `AdaptiveAvgPool2d((8,8))` average-pools 4×4 blocks
+of the 32×32 bottleneck, and post-BatchNorm ReLU features are half-normal, so the pooled
+vector is dominated by its per-channel DC term — the letter of ADR-007's "no GAP" with much
+of GAP's damage; (2) no LR search was run for either arm, and Adam at 1e-3 on a
+16.8M-parameter `Linear(32768, 512)` is the standard way to kill a wide ReLU head early —
+the lopsided BL column is what partial unit death looks like; (3) the FC head carries no
+normalisation, and the BatchNorm'd trunk cannot compensate.
+
+It went unnoticed because **no overfit-one-batch test exists for either corner
+architecture** — the check that exists for `EnhancementNet` across all four losses, added
+in the Phase 04 audit precisely because a green suite had hidden three dead models.
+
+exp-011 is the repair, under a new ID per rule 1.
 
 ### Why exp-001..004 are marked INVALID (2026-08-13, audit)
 

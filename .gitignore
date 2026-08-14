@@ -52,6 +52,9 @@ runs/
 .DS_Store
 Thumbs.db
 
-.agents/
-AGENTS.md
-GEMINI.md
+# NOT ignored, deliberately: .agents/, AGENTS.md and GEMINI.md are committed.
+# 06-workflow/git-workflow.md: ".agents/state/ is version-controlled deliberately. It is
+# the handoff mechanism: a future agent reads STATUS.md at main and knows where the
+# project is." An earlier `.agents/` line here did nothing to the already-tracked files
+# but silently refused every *new* one — the same failure mode as the unanchored `env/`
+# pattern that swallowed configs/env/ and turned a GPU run into a CPU run.

@@ -50,7 +50,7 @@ def evaluate_no_model_baseline(
     # compares the degraded input *as an image* against the target, so both sides have to
     # be in [0, 1] with data_range=1.0 (ADR-009).
     dataset = BaselineDataset(frozen_dir=frozen_dir)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     psnr_total = 0.0
     ssim_total = 0.0

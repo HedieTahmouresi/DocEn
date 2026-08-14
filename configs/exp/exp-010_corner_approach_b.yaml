@@ -1,0 +1,30 @@
+run:
+  experiment_id: exp-10
+  name: corner_approach_b
+  seed: 1337
+  notes: "Approach B: Heatmap regression via CornerHeatmapNet (MSE loss on [0,1] 4-channel Gaussians)"
+
+model:
+  arch: corner_heatmap
+  base_channels: 64
+  levels: 4
+  out_channels: 4
+  upsample: transpose
+  dropout: 0.0
+
+data:
+  resolution: 512
+  samples_per_epoch: 2000
+  frozen_version: v1
+  heatmap_sigma: 8.0
+
+loss:
+  type: mse
+
+optim:
+  optimizer: adam
+  lr: 1.0e-3
+  weight_decay: 0.0
+  scheduler: cosine
+  epochs: 40
+  grad_clip: 1.0

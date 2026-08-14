@@ -219,7 +219,7 @@ def summarise_variants(variants: dict, baseline: dict, batch_size: int = 8) -> l
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     for name, (model, dataset) in variants.items():
-        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
         psnr_total, ssim_total, n = 0.0, 0.0, 0
         model.to(device).eval()
         for batch in loader:

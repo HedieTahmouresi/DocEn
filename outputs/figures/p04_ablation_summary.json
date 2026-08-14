@@ -1,0 +1,27 @@
+[
+  {
+    "variant": "No-model baseline (degraded input)",
+    "val_psnr": 15.1627,
+    "val_ssim": 0.6803
+  },
+  {
+    "variant": "L-A",
+    "val_psnr": 24.2829,
+    "val_ssim": 0.8398
+  },
+  {
+    "variant": "L-B",
+    "val_psnr": 23.8118,
+    "val_ssim": 0.8347
+  },
+  {
+    "variant": "L-C",
+    "val_psnr": 24.0853,
+    "val_ssim": 0.8491
+  },
+  {
+    "variant": "L-D",
+    "val_psnr": 23.9318,
+    "val_ssim": 0.8497
+  }
+]

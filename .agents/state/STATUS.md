@@ -75,7 +75,8 @@ valid comparison** — compare all arms at whatever matched epoch they reached.
 | 05 Enhancement evaluation | **IN PROGRESS — `evaluate.py` written, not yet run** | — |
 | 06 Corner detection A & B | **REOPENED** — B stands, A being re-run as exp-011 | FAIL |
 | 07 Dropout ablation | configs written (exp-013, exp-014), not launched | — |
-| 08 Inference & end-to-end pipeline | **RESCOPED — now mandatory, see DEV-004** | — |
+| 08 Inference & end-to-end pipeline | **COMPLETE** — scanner.py, scan_document.py, app.py delivered | PASS |
+
 | 09 Bonus: joint fine-tune | **DROPPED** (ADR-012 conditional behaviour) | — |
 | 10 Report & submission | not started | — |
 

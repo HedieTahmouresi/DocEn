@@ -1,0 +1,470 @@
+{
+  "experiment_id": "exp-008",
+  "run_dir": "runs/exp-008_enh_l1msssim_sobel",
+  "checkpoint_epoch": 19,
+  "git_commit": "b8f587edcf0c5ab03aa5994a74bb1e1af60a4f7c",
+  "frozen_version": "v1",
+  "resolution": 512,
+  "loss_type": "l1_msssim_sobel",
+  "ssim_settings": {
+    "window": "11x11 Gaussian",
+    "sigma": 1.5,
+    "K1": 0.01,
+    "K2": 0.03,
+    "data_range": 1.0,
+    "channels": "per channel, averaged"
+  },
+  "psnr_settings": {
+    "data_range": 1.0,
+    "per_image_then_averaged": true
+  },
+  "splits": {
+    "baseline_test": {
+      "psnr": 15.1403,
+      "ssim": 0.6657,
+      "num_samples": 500
+    },
+    "baseline_val": {
+      "psnr": 15.1627,
+      "ssim": 0.6803,
+      "num_samples": 500
+    },
+    "train": {
+      "psnr": 24.35419859313965,
+      "ssim": 0.8609582481384277,
+      "num_samples": 500
+    },
+    "val": {
+      "psnr": 24.099813171386717,
+      "ssim": 0.8483215732574463,
+      "num_samples": 500
+    },
+    "test": {
+      "psnr": 23.314515090942383,
+      "ssim": 0.8351037931442261,
+      "num_samples": 500
+    }
+  },
+  "interpretation": "Neither strongly overfitting nor underfitting. Train SSIM 0.8610 vs test 0.8351 is a gap of only 0.0259, and the model clears the no-model baseline by +0.1694 SSIM. A small gap with good numbers on both sides is the outcome on-the-fly generation is designed to produce: the network effectively never sees the same image twice, so there is little fixed training set to memorise.",
+  "real_photos": {
+    "per_photo": [
+      {
+        "photo": "20260803_112334.jpg",
+        "rectified_input_conf": 28.3639846743295,
+        "rectified_input_chars": 844,
+        "model_output_conf": 26.95205479452055,
+        "model_output_chars": 561,
+        "reference_scan_conf": 32.25714285714286,
+        "reference_scan_chars": 376,
+        "rectified_input_full_res_conf": 32.716577540106954,
+        "rectified_input_full_res_chars": 608,
+        "has_transcript": true,
+        "rectified_input_cer": 5.12751677852349,
+        "model_output_cer": 3.3221476510067114,
+        "reference_scan_cer": 1.9530201342281879,
+        "rectified_input_full_res_cer": 3.5436241610738257
+      },
+      {
+        "photo": "20260803_112400.jpg",
+        "rectified_input_conf": 27.466216216216218,
+        "rectified_input_chars": 956,
+        "model_output_conf": 29.238938053097346,
+        "model_output_chars": 401,
+        "reference_scan_conf": 33.36893203883495,
+        "reference_scan_chars": 367,
+        "rectified_input_full_res_conf": 31.797709923664122,
+        "rectified_input_full_res_chars": 799,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112422.jpg",
+        "rectified_input_conf": 28.882978723404257,
+        "rectified_input_chars": 592,
+        "model_output_conf": 25.98076923076923,
+        "model_output_chars": 324,
+        "reference_scan_conf": 32.01724137931034,
+        "reference_scan_chars": 218,
+        "rectified_input_full_res_conf": 32.114285714285714,
+        "rectified_input_full_res_chars": 735,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112527.jpg",
+        "rectified_input_conf": 40.82119205298013,
+        "rectified_input_chars": 672,
+        "model_output_conf": 26.307692307692307,
+        "model_output_chars": 683,
+        "reference_scan_conf": 46.95,
+        "reference_scan_chars": 604,
+        "rectified_input_full_res_conf": 36.75706214689266,
+        "rectified_input_full_res_chars": 784,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112551.jpg",
+        "rectified_input_conf": 33.19444444444444,
+        "rectified_input_chars": 699,
+        "model_output_conf": 29.62676056338028,
+        "model_output_chars": 574,
+        "reference_scan_conf": 39.442622950819676,
+        "reference_scan_chars": 630,
+        "rectified_input_full_res_conf": 36.46621621621622,
+        "rectified_input_full_res_chars": 753,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112602.jpg",
+        "rectified_input_conf": 26.246835443037973,
+        "rectified_input_chars": 713,
+        "model_output_conf": 26.273972602739725,
+        "model_output_chars": 638,
+        "reference_scan_conf": 35.057377049180324,
+        "reference_scan_chars": 682,
+        "rectified_input_full_res_conf": 25.67630057803468,
+        "rectified_input_full_res_chars": 859,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112749.jpg",
+        "rectified_input_conf": 30.132275132275133,
+        "rectified_input_chars": 903,
+        "model_output_conf": 26.739583333333332,
+        "model_output_chars": 796,
+        "reference_scan_conf": 38.21078431372549,
+        "reference_scan_chars": 969,
+        "rectified_input_full_res_conf": 35.43455497382199,
+        "rectified_input_full_res_chars": 939,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112800.jpg",
+        "rectified_input_conf": 26.75257731958763,
+        "rectified_input_chars": 1445,
+        "model_output_conf": 28.580645161290324,
+        "model_output_chars": 986,
+        "reference_scan_conf": 35.12621359223301,
+        "reference_scan_chars": 1125,
+        "rectified_input_full_res_conf": 31.536723163841806,
+        "rectified_input_full_res_chars": 930,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112826.jpg",
+        "rectified_input_conf": 24.48951048951049,
+        "rectified_input_chars": 1302,
+        "model_output_conf": 26.23,
+        "model_output_chars": 863,
+        "reference_scan_conf": 37.85514018691589,
+        "reference_scan_chars": 1049,
+        "rectified_input_full_res_conf": 28.244444444444444,
+        "rectified_input_full_res_chars": 1282,
+        "has_transcript": true,
+        "rectified_input_cer": 2.7979274611398965,
+        "model_output_cer": 1.7512953367875648,
+        "reference_scan_cer": 2.1295336787564767,
+        "rectified_input_full_res_cer": 2.7512953367875648
+      },
+      {
+        "photo": "20260803_112833.jpg",
+        "rectified_input_conf": 24.658730158730158,
+        "rectified_input_chars": 1210,
+        "model_output_conf": 29.600877192982455,
+        "model_output_chars": 924,
+        "reference_scan_conf": 35.64601769911504,
+        "reference_scan_chars": 1117,
+        "rectified_input_full_res_conf": 26.265402843601894,
+        "rectified_input_full_res_chars": 1070,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_112856.jpg",
+        "rectified_input_conf": 25.472727272727273,
+        "rectified_input_chars": 1167,
+        "model_output_conf": 26.93951612903226,
+        "model_output_chars": 1015,
+        "reference_scan_conf": 32.52542372881356,
+        "reference_scan_chars": 1000,
+        "rectified_input_full_res_conf": 29.658653846153847,
+        "rectified_input_full_res_chars": 909,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_113351.jpg",
+        "rectified_input_conf": 73.97931034482758,
+        "rectified_input_chars": 1641,
+        "model_output_conf": 56.86619718309859,
+        "model_output_chars": 1638,
+        "reference_scan_conf": 83.69767441860465,
+        "reference_scan_chars": 1561,
+        "rectified_input_full_res_conf": 84.03378378378379,
+        "rectified_input_full_res_chars": 1658,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_113355.jpg",
+        "rectified_input_conf": 80.07720588235294,
+        "rectified_input_chars": 1603,
+        "model_output_conf": 62.55172413793103,
+        "model_output_chars": 1660,
+        "reference_scan_conf": 85.5,
+        "reference_scan_chars": 1565,
+        "rectified_input_full_res_conf": 85.73867595818815,
+        "rectified_input_full_res_chars": 1629,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_113536.jpg",
+        "rectified_input_conf": 35.041666666666664,
+        "rectified_input_chars": 180,
+        "model_output_conf": 51.77777777777778,
+        "model_output_chars": 65,
+        "reference_scan_conf": 44.83783783783784,
+        "reference_scan_chars": 143,
+        "rectified_input_full_res_conf": 34.47142857142857,
+        "rectified_input_full_res_chars": 280,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_113615.jpg",
+        "rectified_input_conf": 36.0625,
+        "rectified_input_chars": 223,
+        "model_output_conf": 34.5,
+        "model_output_chars": 40,
+        "reference_scan_conf": 32.32692307692308,
+        "reference_scan_chars": 199,
+        "rectified_input_full_res_conf": 25.53846153846154,
+        "rectified_input_full_res_chars": 355,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_113637.jpg",
+        "rectified_input_conf": 20.705645161290324,
+        "rectified_input_chars": 1256,
+        "model_output_conf": 26.026315789473685,
+        "model_output_chars": 806,
+        "reference_scan_conf": 32.296875,
+        "reference_scan_chars": 1010,
+        "rectified_input_full_res_conf": 20.196629213483146,
+        "rectified_input_full_res_chars": 966,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_113703.jpg",
+        "rectified_input_conf": 22.871186440677967,
+        "rectified_input_chars": 1253,
+        "model_output_conf": 28.473958333333332,
+        "model_output_chars": 702,
+        "reference_scan_conf": 31.43127962085308,
+        "reference_scan_chars": 964,
+        "rectified_input_full_res_conf": 22.419141914191417,
+        "rectified_input_full_res_chars": 1220,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131214.jpg",
+        "rectified_input_conf": 78.89567430025446,
+        "rectified_input_chars": 1860,
+        "model_output_conf": 70.77712609970675,
+        "model_output_chars": 1684,
+        "reference_scan_conf": 88.42151162790698,
+        "reference_scan_chars": 1768,
+        "rectified_input_full_res_conf": 74.87834549878346,
+        "rectified_input_full_res_chars": 1891,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131239.jpg",
+        "rectified_input_conf": 70.31123919308358,
+        "rectified_input_chars": 1706,
+        "model_output_conf": 56.88484848484848,
+        "model_output_chars": 1703,
+        "reference_scan_conf": 88.72285714285714,
+        "reference_scan_chars": 1773,
+        "rectified_input_full_res_conf": 68.93201133144476,
+        "rectified_input_full_res_chars": 1651,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131317.jpg",
+        "rectified_input_conf": 66.9401913875598,
+        "rectified_input_chars": 1886,
+        "model_output_conf": 62.67027027027027,
+        "model_output_chars": 1678,
+        "reference_scan_conf": 83.27220630372493,
+        "reference_scan_chars": 1741,
+        "rectified_input_full_res_conf": 66.13086419753087,
+        "rectified_input_full_res_chars": 1844,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131445.jpg",
+        "rectified_input_conf": 25.22590361445783,
+        "rectified_input_chars": 1185,
+        "model_output_conf": 39.47826086956522,
+        "model_output_chars": 211,
+        "reference_scan_conf": 88.3125,
+        "reference_scan_chars": 105,
+        "rectified_input_full_res_conf": 82.22222222222223,
+        "rectified_input_full_res_chars": 106,
+        "has_transcript": true,
+        "rectified_input_cer": 16.114285714285714,
+        "model_output_cer": 2.342857142857143,
+        "reference_scan_cer": 0.7285714285714285,
+        "rectified_input_full_res_cer": 0.7428571428571429
+      },
+      {
+        "photo": "20260803_131533.jpg",
+        "rectified_input_conf": 81.26315789473684,
+        "rectified_input_chars": 111,
+        "model_output_conf": 60.7,
+        "model_output_chars": 120,
+        "reference_scan_conf": 79.77777777777777,
+        "reference_scan_chars": 111,
+        "rectified_input_full_res_conf": 80.25,
+        "rectified_input_full_res_chars": 111,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131811.jpg",
+        "rectified_input_conf": 69.73853211009174,
+        "rectified_input_chars": 1017,
+        "model_output_conf": 74.39024390243902,
+        "model_output_chars": 1008,
+        "reference_scan_conf": 89.835,
+        "reference_scan_chars": 1025,
+        "rectified_input_full_res_conf": 72.63524590163935,
+        "rectified_input_full_res_chars": 1104,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131839.jpg",
+        "rectified_input_conf": 63.47385620915033,
+        "rectified_input_chars": 1306,
+        "model_output_conf": 76.32936507936508,
+        "model_output_chars": 1201,
+        "reference_scan_conf": 86.74666666666667,
+        "reference_scan_chars": 1157,
+        "rectified_input_full_res_conf": 67.31893687707641,
+        "rectified_input_full_res_chars": 1314,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_131910.jpg",
+        "rectified_input_conf": 37.144578313253014,
+        "rectified_input_chars": 299,
+        "model_output_conf": 58.77777777777778,
+        "model_output_chars": 144,
+        "reference_scan_conf": 75.44444444444444,
+        "reference_scan_chars": 157,
+        "rectified_input_full_res_conf": 29.57948717948718,
+        "rectified_input_full_res_chars": 600,
+        "has_transcript": true,
+        "rectified_input_cer": 2.262135922330097,
+        "model_output_cer": 0.7378640776699029,
+        "reference_scan_cer": 0.8058252427184466,
+        "rectified_input_full_res_cer": 5.097087378640777
+      },
+      {
+        "photo": "20260803_131956.jpg",
+        "rectified_input_conf": 86.39662447257383,
+        "rectified_input_chars": 1182,
+        "model_output_conf": 83.7533039647577,
+        "model_output_chars": 1155,
+        "reference_scan_conf": 89.97787610619469,
+        "reference_scan_chars": 1161,
+        "rectified_input_full_res_conf": 85.45378151260505,
+        "rectified_input_full_res_chars": 1181,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_132022.jpg",
+        "rectified_input_conf": 80.95256916996047,
+        "rectified_input_chars": 1274,
+        "model_output_conf": 84.6606334841629,
+        "model_output_chars": 1160,
+        "reference_scan_conf": 93.12616822429906,
+        "reference_scan_chars": 1156,
+        "rectified_input_full_res_conf": 88.34684684684684,
+        "rectified_input_full_res_chars": 1174,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_132227.jpg",
+        "rectified_input_conf": 76.36551724137931,
+        "rectified_input_chars": 2100,
+        "model_output_conf": 75.42396313364056,
+        "model_output_chars": 2094,
+        "reference_scan_conf": 90.78863636363636,
+        "reference_scan_chars": 2148,
+        "rectified_input_full_res_conf": 76.16592920353982,
+        "rectified_input_full_res_chars": 2062,
+        "has_transcript": false
+      },
+      {
+        "photo": "20260803_132248.jpg",
+        "rectified_input_conf": 39.458333333333336,
+        "rectified_input_chars": 272,
+        "model_output_conf": 58.625,
+        "model_output_chars": 143,
+        "reference_scan_conf": 69.6896551724138,
+        "reference_scan_chars": 160,
+        "rectified_input_full_res_conf": 31.96894409937888,
+        "rectified_input_full_res_chars": 532,
+        "has_transcript": true,
+        "rectified_input_cer": 6.153846153846154,
+        "model_output_cer": 2.7435897435897436,
+        "reference_scan_cer": 3.1025641025641026,
+        "rectified_input_full_res_cer": 13.0
+      },
+      {
+        "photo": "20260803_132259.jpg",
+        "rectified_input_conf": 76.08668730650155,
+        "rectified_input_chars": 1528,
+        "model_output_conf": 72.45757575757575,
+        "model_output_chars": 1558,
+        "reference_scan_conf": 92.14953271028037,
+        "reference_scan_chars": 1596,
+        "rectified_input_full_res_conf": 79.47976878612717,
+        "rectified_input_full_res_chars": 1593,
+        "has_transcript": false
+      }
+    ],
+    "summary": {
+      "rectified_input": {
+        "mean_cer": 6.4911424060250695,
+        "cer_documents": 5,
+        "mean_confidence": 47.915728365646494,
+        "confidence_photos": 30
+      },
+      "model_output": {
+        "mean_cer": 2.1795507903822133,
+        "cer_documents": 5,
+        "mean_confidence": 47.919838380485395,
+        "confidence_photos": 30
+      },
+      "reference_scan": {
+        "mean_cer": 1.7439029173677283,
+        "cer_documents": 5,
+        "mean_confidence": 60.8270772763504,
+        "confidence_photos": 30
+      },
+      "rectified_input_full_res": {
+        "mean_cer": 5.026972803871862,
+        "cer_documents": 5,
+        "mean_confidence": 50.747614534242764,
+        "confidence_photos": 30
+      },
+      "did_enhancement_beat_the_raw_photo": true,
+      "cer_improvement_vs_input": 4.311591615642856,
+      "cer_gap_to_commercial_app": 0.43564787301448504,
+      "caveat": "CER is primary. Tesseract confidence is calibrated against its training image statistics; enhanced images shift those, so confidence can fall while CER improves."
+    },
+    "protocol": {
+      "matched_resolution": true,
+      "model_resolution": 512,
+      "ocr_eval_long_side": 2000,
+      "tesseract_psm": 6,
+      "cer_normalisation": "collapse whitespace runs, strip ends; case and punctuation preserved"
+    }
+  }
+}

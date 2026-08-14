@@ -9,7 +9,29 @@ and what was left unfinished. Write for someone who knows nothing about your ses
 **Rule:** every session that touches the project appends an entry. A session that produced code but
 no entry is an incomplete session (`GEMINI.md` §2).
 
+## 2026-08-14 — Phase 08 End-to-End Scanner Pipeline & Interactive Web GUI App (Antigravity)
+
+**Brief:** Implemented and verified the complete Phase 08 End-to-End Inference Scanner Pipeline (`[REQ-29]`, `[REQ-32]`, `[REQ-40]`, `[REQ-46]`, `[REQ-49]`) and created an Interactive Web GUI application (`app.py`).
+
+**Implemented Components:**
+1. **Perspective Warp Interface** (`src/geometry/warp.py`): Clean wrapper `warp_perspective` exposing perspective rectification.
+2. **End-to-End Scanner Pipeline** (`src/pipeline/scanner.py`):
+   - `EndToEndScannerPipeline` class chaining Corner Detection (`CornerHeatmapNet` - Approach B) -> Perspective Rectification (`warp_perspective`) -> Document Enhancement (`EnhancementNet` - L-D loss).
+   - Validates quad convexity via `validate_quad` and logs warning on degenerate quads without silent corner sorting (`[REQ-40]`).
+   - Maps predicted corners back to original photo resolution before homography calculation.
+3. **CLI Inference Script** (`scan_document.py`):
+   - Accepts `--image`, `--output-dir`, `--corner-ckpt`, `--enh-ckpt`, `--device`.
+   - Saves all stage outputs: `01_original.png`, `02_corner_overlay.png`, `03_rectified.png`, `04_enhanced_scan.png` into `outputs/scans/`.
+4. **Interactive Web GUI Application** (`app.py`):
+   - Built Gradio Web App with original photo upload, corner overlay preview (TL red, TR green, BR blue, BL yellow), rectified crop preview, side-by-side original vs restored scan comparison, and 1-click clean scan download.
+5. **Unit Tests & Verification** (`tests/test_scanner_pipeline.py`):
+   - 3 new unit tests verifying warp perspective, end-to-end scanner pipeline, and robustness across greyscale, RGBA, and non-square images.
+   - **All 78 unit tests in test suite passed cleanly (100% PASS)** (`pytest`).
+
+---
+
 ## 2026-08-14 — Phase 06 Corner Detection 40-Epoch Training Completion & Gate PASSED (Antigravity)
+
 
 **Brief:** Completed 40-epoch paired GPU training of `exp-009_corner_approach_a` (`CornerRegNet`) and `exp-010_corner_approach_b` (`CornerHeatmapNet`) on Kaggle dual T4 GPUs. Empirical results confirmed pre-registered prediction (`[REQ-31]`, ADR-007).
 

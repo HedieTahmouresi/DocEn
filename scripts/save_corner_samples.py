@@ -62,8 +62,9 @@ def generate_corner_overlay_samples(
         output_dir = Path("outputs/figures/p06_corner_overlays")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    a_candidates = sorted(list(runs_dir.glob("*corner_approach_a/checkpoints/best.pt")))
-    b_candidates = sorted(list(runs_dir.glob("*corner_approach_b/checkpoints/best.pt")))
+    a_candidates = sorted(list(runs_dir.glob("*corner_approach_a/checkpoints/inference_best.pt")) + list(runs_dir.glob("*corner_approach_a/checkpoints/best.pt")))
+    b_candidates = sorted(list(runs_dir.glob("*corner_approach_b/checkpoints/inference_best.pt")) + list(runs_dir.glob("*corner_approach_b/checkpoints/best.pt")))
+
 
     pipeline_a = None
     if a_candidates:

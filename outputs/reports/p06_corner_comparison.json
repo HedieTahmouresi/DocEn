@@ -1,0 +1,62 @@
+{
+  "Approach A (CornerRegNet)": {
+    "synthetic_test": {
+      "mean_corner_error_px": 224.7528076171875,
+      "mean_corner_error_pct": 31.039889522818125,
+      "success_rate_1pct": 0.0,
+      "success_rate_2pct": 0.0,
+      "success_rate_1pct_corner": 0.05,
+      "success_rate_2pct_corner": 0.35000000000000003,
+      "TL_err_px": 152.41961669921875,
+      "TR_err_px": 156.8235321044922,
+      "BR_err_px": 159.53135681152344,
+      "BL_err_px": 430.23687744140625,
+      "diagonal_px": 724.0773439350247,
+      "num_samples": 500
+    },
+    "real_photos": {
+      "mean_corner_error_px": 232.6759796142578,
+      "mean_corner_error_pct": 32.13413339930949,
+      "success_rate_1pct": 0.0,
+      "success_rate_2pct": 0.0,
+      "success_rate_1pct_corner": 0.0,
+      "success_rate_2pct_corner": 0.0,
+      "TL_err_px": 154.9016571044922,
+      "TR_err_px": 151.14588928222656,
+      "BR_err_px": 161.77310180664062,
+      "BL_err_px": 462.8832702636719,
+      "diagonal_px": 724.0773439350247,
+      "num_samples": 30
+    }
+  },
+  "Approach B (CornerHeatmapNet)": {
+    "synthetic_test": {
+      "mean_corner_error_px": 1.183712363243103,
+      "mean_corner_error_pct": 0.16347871855928747,
+      "success_rate_1pct": 99.6,
+      "success_rate_2pct": 99.8,
+      "success_rate_1pct_corner": 99.85000000000001,
+      "success_rate_2pct_corner": 99.9,
+      "TL_err_px": 1.2429143190383911,
+      "TR_err_px": 1.4306612014770508,
+      "BR_err_px": 1.0518676042556763,
+      "BL_err_px": 1.0094064474105835,
+      "diagonal_px": 724.0773439350247,
+      "num_samples": 500
+    },
+    "real_photos": {
+      "mean_corner_error_px": 61.85811996459961,
+      "mean_corner_error_pct": 8.543026581722527,
+      "success_rate_1pct": 13.333333333333334,
+      "success_rate_2pct": 26.666666666666668,
+      "success_rate_1pct_corner": 47.5,
+      "success_rate_2pct_corner": 58.333333333333336,
+      "TL_err_px": 86.76329803466797,
+      "TR_err_px": 50.418190002441406,
+      "BR_err_px": 26.410676956176758,
+      "BL_err_px": 83.8403091430664,
+      "diagonal_px": 724.0773439350247,
+      "num_samples": 30
+    }
+  }
+}

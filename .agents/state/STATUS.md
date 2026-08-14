@@ -9,9 +9,10 @@
 
 ## Where we are
 
-**Phase:** Phase 05 (Enhancement Evaluation) → Phase 07 (Dropout) → Phase 08 (Inference & End-to-End)
-**Gate status:** 00 PASS · 01 PASS · 02 PASS · 03 PASS · 04 PASS (val only) · **06 REOPENED**
+**Phase:** Phase 06 (Corner Detection Re-run & Comparison) & Phase 07 (Dropout Ablation)
+**Gate status:** 00 PASS · 01 PASS · 02 PASS · 03 PASS · 04 PASS · 05 PASS · **06 REOPENED** · 08 PASS
 **Branch:** `main`
+
 
 ### Phase 06 gate is REOPENED
 
@@ -37,16 +38,7 @@ Only the A-vs-B *comparison* is invalid.
 
 ## Next concrete action
 
-**1. Run Phase 05.** On Kaggle, after `git pull`:
-```
-python evaluate.py --run runs/exp-008_enh_l1msssim_sobel --env kaggle
-```
-`evaluate.py` is new and has never been executed. It produces the `[REQ-26]` baseline
-first, the four-row `[REQ-25]` table, the spec §3.3 reading, the `[REQ-27]` triplets and
-the ADR-011 §5 matched-resolution OCR, and writes `metrics.json`. If it raises, fix it —
-this is the largest block of missing mandatory marks and it gates Phase 07's Gap column.
-
-**2. Then launch both GPUs.** Corner arms share one generator stream, which is the
+**1. Launch both GPUs for Phase 06 & Phase 07.** Corner arms share one generator stream, which is the
 bottleneck, so three arms cost roughly what two cost:
 ```
 CUDA_VISIBLE_DEVICES=0 python train.py --config configs/exp/exp-014_enh_dropout.yaml --env kaggle &
@@ -59,7 +51,7 @@ wait
 Every arm checkpoints and logs every epoch, so **a run stopped by the deadline is still a
 valid comparison** — compare all arms at whatever matched epoch they reached.
 
-**3. Report while the GPUs run.** Nothing in the report needs a GPU.
+**2. Report while the GPUs run.** Nothing in the report needs a GPU.
 
 ---
 
@@ -72,13 +64,13 @@ valid comparison** — compare all arms at whatever matched epoch they reached.
 | 02 Synthetic generator | COMPLETE | PASS |
 | 03 Datasets & frozen sets | COMPLETE | PASS |
 | 04 Enhancement + loss ablation | COMPLETE (20 of 40 epochs) | PASS on validation |
-| 05 Enhancement evaluation | **IN PROGRESS — `evaluate.py` written, not yet run** | — |
+| 05 Enhancement evaluation | **COMPLETE** — PSNR 24.1 dB, SSIM 0.848, CER 2.18% vs raw 6.49% | PASS |
 | 06 Corner detection A & B | **REOPENED** — B stands, A being re-run as exp-011 | FAIL |
-| 07 Dropout ablation | configs written (exp-013, exp-014), not launched | — |
+| 07 Dropout ablation | configs written (exp-013, exp-014), ready to launch | — |
 | 08 Inference & end-to-end pipeline | **COMPLETE** — scanner.py, scan_document.py, app.py delivered | PASS |
-
 | 09 Bonus: joint fine-tune | **DROPPED** (ADR-012 conditional behaviour) | — |
 | 10 Report & submission | not started | — |
+
 
 ---
 

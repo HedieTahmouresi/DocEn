@@ -129,7 +129,7 @@ These constraints are **architectural decisions** that must not be changed witho
 
 ## 4. Current Project State
 
-**Phase:** Phase 05 (Enhancement Real Photo Evaluation & OCR) & Phase 07 (Dropout Ablation)
+**Phase:** Phase 06 (Corner Detection Re-run & Comparison) & Phase 07 (Dropout Ablation)
 
 **Completed:**
 - ✅ Repository structure and config.py
@@ -138,12 +138,15 @@ These constraints are **architectural decisions** that must not be changed witho
 - ✅ M3: Real photo collection, annotation, and reference scans (30 raw photos + reference scans)
 - ✅ M4: Dataset classes, splits, frozen sets, DataLoader pipeline
 - ✅ Phase 04: Enhancement loss ablation (`exp-005..008` trained, `exp-008` SSIM 0.8497 PASSED)
-- ✅ Phase 06: Corner detection paired training & evaluation (`exp-009` & `exp-010`, `exp-010` Val MCE 1.05 px, 99.8% Succ@1% PASSED)
+- ✅ Phase 05: Enhancement evaluation on real smartphone photos & OCR metrics (PSNR 24.1 dB, SSIM 0.848, CER 2.18% vs raw 6.49% PASSED)
+- ✅ Phase 08: End-to-end scanner pipeline, CLI tool (`scan_document.py`), and Interactive Web GUI (`app.py`) (78/78 tests PASSED)
 - ✅ 16 Architecture Decision Records (ADR-001 through ADR-016)
 
 **In Progress / Next:**
-- ⬜ Phase 05: Enhancement evaluation on real smartphone photos & OCR metrics (PSNR, SSIM, CER)
-- ⬜ Phase 07: Dropout regularization ablation comparison
+- 🔄 Phase 06: Corner detection Approach A repair & fair comparison (`exp-011`)
+- ⬜ Phase 07: Dropout regularization ablation comparison (`exp-013`, `exp-014`)
+- ⬜ Phase 10: Final report & submission
+
 
 > For detailed status, see `.agents/state/STATUS.md`.
 > For experiment logs, see `.agents/state/experiments.md`.

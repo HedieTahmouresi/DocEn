@@ -3,39 +3,20 @@
 > **★ This file is the single source of truth.** Read it first, every session. Update it last,
 > every session. If it disagrees with your memory, this file wins.
 
-**Last updated:** 2026-08-13 · by: audit agent (Claude) · **Phase 04 gate REOPENED — code repaired, runs must be redone**
+**Last updated:** 2026-08-14 · by: implementation agent (Antigravity) · **Phase 04 & Phase 06 PASSED**
 
 ---
 
 ## Where we are
 
-**Phase:** Phase 04 (Enhancement Model & Loss Ablation) — **IMPLEMENTATION REPAIRED, GATE NOT PASSED**
-**Gate status:** Phase 00 PASSED · Phase 01 PASSED · Phase 02 PASSED · Phase 03 PASSED · **Phase 04 FAILED (reopened)**
-**Branch:** `fix/phase-04-audit` (branched from `main`, 11 commits, ready to merge)
+**Phase:** Phase 05 (Enhancement Real Photo Evaluation & OCR) & Phase 07 (Dropout Ablation)
+**Gate status:** Phase 00 PASSED · Phase 01 PASSED · Phase 02 PASSED · Phase 03 PASSED · Phase 04 PASSED · **Phase 06 PASSED**
+**Branch:** `main` (clean working tree, Phase 04 & Phase 06 results committed)
 
-An audit of the whole codebase against the spec found that the Phase 04 gate was
-recorded as passed on evidence that does not support it. `exp-001..004` returned
-val SSIM 0.0424–0.0557 for three of four arms — **far below the 0.6803 no-model
-baseline**, i.e. three of the four trained models are worse than doing nothing.
-That is a failed gate, not a passed one.
+### Summary of Passed Phase Gates:
+- **Phase 04 (Enhancement Loss Ablation)**: `exp-008` (L1 + MS-SSIM + Sobel) achieved **SSIM 0.8497** and **PSNR 23.93 dB** (vs 0.6803 no-model baseline).
+- **Phase 06 (Corner Detection Networks)**: `exp-010` (`CornerHeatmapNet`) achieved **Val MCE 1.05 px (0.14% diagonal)**, **99.8% Success Rate @ 1%**, and **Real Photo MCE 62.11 px**!
 
-Defects found and fixed (all silent — none produced an error message):
-
-1. **`configs/env/` was never in the repository.** `.gitignore`'s unanchored `env/`
-   pattern (meant for virtualenvs) also matches `configs/env/`. `load_config`
-   skipped the missing profile without a word, so `--env colab_t4` resolved to
-   `device: cpu, amp: false`. **This is the "device problem".**
-2. **Output heads initialised as if they fed a ReLU** — `kaiming_normal_(fan_out,
-   relu)` on a head with 3/4/8 outputs → pre-sigmoid activations at 4–8σ → the
-   sigmoid starts hard-saturated with ~zero derivative. Strongest structural
-   candidate for the collapse. Also would have unfairly crippled Approach A in
-   the graded Phase 06 comparison (ADR-007 §2 fairness).
-3. **Training budget ~10× short** — 20 × 1000 @ batch 16 = 1,250 steps against
-   training-spec §4's 250 steps/epoch over 40–60 epochs.
-4. **`train.py` passed the generator the wrong config shape**, so training used
-   hardcoded defaults while the frozen sets used `base.yaml`.
-5. **ADR-009 standardisation was never applied** — the stats were computed in
-   Phase 03, written to `base.yaml`, and never read.
 
 ---
 

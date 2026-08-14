@@ -24,7 +24,7 @@ def init_relu_trunk(module: nn.Module) -> None:
             nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0.0)
-        elif isinstance(m, nn.BatchNorm2d):
+        elif isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
             nn.init.constant_(m.weight, 1.0)
             nn.init.constant_(m.bias, 0.0)
         elif isinstance(m, nn.Linear):
@@ -84,7 +84,7 @@ class Encoder(nn.Module):
     Bottleneck: base*8 -> base*8  (512 -> 512)
     """
 
-    def __init__(self, in_ch: int = 3, base: int = 64, levels: int = 4):
+    def __init__(self, in_ch: int = 3, base: int = 64, levels: int = 4, dropout: float = 0.0):
         super().__init__()
         self.levels = levels
         self.enc_blocks = nn.ModuleList()
@@ -99,6 +99,17 @@ class Encoder(nn.Module):
 
         self.bottleneck = DoubleConv(curr_ch, curr_ch)
 
+        # [REQ-38] / model-specs §4 — Phase 07 only. Dropout2d goes in the **bottleneck
+        # only** for the encoder-decoder models: dropout in the early high-resolution
+        # levels destroys the fine spatial detail that 1-3 px text strokes depend on,
+        # whereas bottleneck features are compressed and semantic. Dropping them forces
+        # the network to infer from global page structure rather than one memorised local
+        # texture, which is exactly the domain-overfitting [REQ-39] asks about.
+        #
+        # nn.Identity() at dropout == 0.0, so Phase 04/06 checkpoints stay load-compatible
+        # in both directions — the module list is unchanged.
+        self.bottleneck_dropout = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
+
     def forward(self, x: torch.Tensor):
         """Returns bottleneck_feature, list_of_skips [skip1, skip2, skip3, skip4]."""
         skips = []
@@ -108,7 +119,7 @@ class Encoder(nn.Module):
             skips.append(feat)
             out = pool(feat)
 
-        bottleneck_feat = self.bottleneck(out)
+        bottleneck_feat = self.bottleneck_dropout(self.bottleneck(out))
         return bottleneck_feat, skips
 
 
@@ -198,18 +209,24 @@ class EnhancementNet(nn.Module):
         out_ch: int = 3,
         upsample: str = "transpose",
         dropout: float = 0.0,
+        allow_dropout: bool = False,
     ):
         super().__init__()
-        assert dropout == 0.0, f"[CON-04] Dropout must be 0.0 in Phase 04, got {dropout}"
+        # [CON-04] forbids dropout in the *first* version of every network. Phase 07 is
+        # the one place the constraint is lifted ([REQ-38]), and it must be opted into
+        # explicitly — a config typo must never silently regularise a Phase 04 run.
+        if not allow_dropout:
+            assert dropout == 0.0, f"[CON-04] Dropout must be 0.0 in Phase 04, got {dropout}"
 
-        self.encoder = Encoder(in_ch=in_ch, base=base_channels, levels=levels)
+        # Bottleneck only (model-specs §4); the decoder stays clean at every resolution.
+        self.encoder = Encoder(in_ch=in_ch, base=base_channels, levels=levels, dropout=dropout)
         self.decoder = Decoder(
             base=base_channels,
             levels=levels,
             out_ch=out_ch,
             out_act="sigmoid",
             upsample=upsample,
-            dropout=dropout,
+            dropout=0.0,
         )
 
         self._init_weights()

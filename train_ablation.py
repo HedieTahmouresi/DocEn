@@ -61,7 +61,7 @@ CSV_FIELDS = ["epoch", "train_loss", "val_loss", "val_psnr", "val_ssim", "lr", "
 def parse_args():
     parser = argparse.ArgumentParser(description="Shared-data loss ablation trainer")
     parser.add_argument("--configs", nargs="+", default=DEFAULT_CONFIGS)
-    parser.add_argument("--env", default="colab_t4", choices=["local_cpu", "mx330", "colab_t4"])
+    parser.add_argument("--env", default="colab_t4", choices=["local_cpu", "mx330", "colab_t4", "kaggle"])
     parser.add_argument("--resume", action="store_true", help="Continue every arm from its last.pt")
     parser.add_argument("--epochs", type=int, default=None, help="Override optim.epochs (smoke runs)")
     parser.add_argument("--samples-per-epoch", type=int, default=None, help="Override (smoke runs)")

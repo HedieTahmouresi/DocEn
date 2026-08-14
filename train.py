@@ -46,7 +46,7 @@ def parse_args():
         "--env",
         type=str,
         default="local_cpu",
-        choices=["local_cpu", "mx330", "colab_t4"],
+        choices=["local_cpu", "mx330", "colab_t4", "kaggle"],
         help="Environment profile name",
     )
     parser.add_argument(
@@ -97,8 +97,13 @@ def build_model(cfg: Dict[str, Any]) -> torch.nn.Module:
     upsample = cfg["model"].get("upsample", "transpose")
     dropout = cfg["model"].get("dropout", 0.0)
 
-    # Assert CON-04
-    assert dropout == 0.0, f"[CON-04] Dropout must be 0.0 in Phase 04, got {dropout}"
+    # [CON-04] forbids dropout in the first version of every network; [REQ-38] lifts it
+    # in Phase 07 only. The lift must be explicit in the config, so that a stray
+    # `dropout: 0.2` cannot silently regularise a Phase 04/06 run and quietly invalidate
+    # the un-regularised comparison arm those phases exist to produce.
+    allow_dropout = bool(cfg["model"].get("allow_dropout", False))
+    if not allow_dropout:
+        assert dropout == 0.0, f"[CON-04] Dropout must be 0.0 in Phase 04/06, got {dropout}"
 
     if arch in ("unet", "enhancement"):
         return EnhancementNet(
@@ -107,12 +112,21 @@ def build_model(cfg: Dict[str, Any]) -> torch.nn.Module:
             out_ch=out_ch,
             upsample=upsample,
             dropout=dropout,
+            allow_dropout=allow_dropout,
         )
     elif arch in ("corner_reg", "approach_a"):
-        return CornerRegNet(base_channels=base_ch, levels=levels, dropout=dropout)
+        return CornerRegNet(
+            base_channels=base_ch,
+            levels=levels,
+            dropout=dropout,
+            allow_dropout=allow_dropout,
+            spatial_pool=cfg["model"].get("spatial_pool", "max"),
+            head_norm=cfg["model"].get("head_norm", True),
+        )
     elif arch in ("corner_heatmap", "approach_b"):
         return CornerHeatmapNet(
-            base_channels=base_ch, levels=levels, upsample=upsample, dropout=dropout
+            base_channels=base_ch, levels=levels, upsample=upsample,
+            dropout=dropout, allow_dropout=allow_dropout,
         )
     else:
         raise ValueError(f"Unknown architecture: {arch}")

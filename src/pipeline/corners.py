@@ -220,15 +220,30 @@ class CornerPipeline:
             loaded_cfg = load_config(exp_file=config_file)
             self.cfg.update(loaded_cfg)
 
-        base_ch = self.cfg.get("model", {}).get("base_channels", 64)
-        levels = self.cfg.get("model", {}).get("levels", 4)
-        dropout = self.cfg.get("model", {}).get("dropout", 0.0)
+        model_cfg = self.cfg.get("model", {})
+        base_ch = model_cfg.get("base_channels", 64)
+        levels = model_cfg.get("levels", 4)
+        dropout = model_cfg.get("dropout", 0.0)
+
+        # Rebuild the architecture the checkpoint was trained with, not today's defaults.
+        # A config that predates `spatial_pool` / `head_norm` is a pre-Phase-07 Approach A
+        # checkpoint: average pooling, no BatchNorm1d. `head_norm` changes the parameter
+        # count, so guessing wrong raises in load_state_dict rather than failing quietly.
+        allow_dropout = bool(model_cfg.get("allow_dropout", dropout > 0.0))
 
         if self.arch == "corner_reg":
-            self.model = CornerRegNet(base_channels=base_ch, levels=levels, dropout=dropout)
+            self.model = CornerRegNet(
+                base_channels=base_ch, levels=levels, dropout=dropout,
+                allow_dropout=allow_dropout,
+                spatial_pool=model_cfg.get("spatial_pool", "avg"),
+                head_norm=model_cfg.get("head_norm", False),
+            )
         else:
-            upsample = self.cfg.get("model", {}).get("upsample", "transpose")
-            self.model = CornerHeatmapNet(base_channels=base_ch, levels=levels, upsample=upsample, dropout=dropout)
+            upsample = model_cfg.get("upsample", "transpose")
+            self.model = CornerHeatmapNet(
+                base_channels=base_ch, levels=levels, upsample=upsample,
+                dropout=dropout, allow_dropout=allow_dropout,
+            )
 
         self.model.load_state_dict(ckpt["model_state_dict"])
         self.model.to(self.device)

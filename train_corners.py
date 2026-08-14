@@ -66,7 +66,7 @@ CSV_FIELDS = [
 def parse_args():
     parser = argparse.ArgumentParser(description="Corner Detection Trainer (Approach A & Approach B)")
     parser.add_argument("--configs", nargs="+", default=DEFAULT_CONFIGS, help="Experiment YAML config paths")
-    parser.add_argument("--env", default="colab_t4", choices=["local_cpu", "mx330", "colab_t4"])
+    parser.add_argument("--env", default="colab_t4", choices=["local_cpu", "mx330", "colab_t4", "kaggle"])
     parser.add_argument("--resume", action="store_true", help="Continue arms from last.pt")
     parser.add_argument("--epochs", type=int, default=None, help="Override epochs (e.g. for smoke runs)")
     parser.add_argument("--samples-per-epoch", type=int, default=None, help="Override samples per epoch")
@@ -134,16 +134,28 @@ class CornerArm:
 
         base_ch = cfg.get("model", {}).get("base_channels", 64)
         levels = cfg.get("model", {}).get("levels", 4)
-        dropout = cfg.get("model", {}).get("dropout", 0.0)
+        model_cfg = cfg.get("model", {})
+        dropout = model_cfg.get("dropout", 0.0)
 
-        assert dropout == 0.0, f"[CON-04] Dropout must be 0.0, got {dropout}"
+        # [CON-04] holds in Phase 06; [REQ-38] lifts it in Phase 07, opt-in per config.
+        allow_dropout = bool(model_cfg.get("allow_dropout", False))
+        if not allow_dropout:
+            assert dropout == 0.0, f"[CON-04] Dropout must be 0.0, got {dropout}"
 
         if self.arch == "corner_reg":
-            self.model = CornerRegNet(base_channels=base_ch, levels=levels, dropout=dropout).to(device)
+            self.model = CornerRegNet(
+                base_channels=base_ch, levels=levels, dropout=dropout,
+                allow_dropout=allow_dropout,
+                spatial_pool=model_cfg.get("spatial_pool", "max"),
+                head_norm=model_cfg.get("head_norm", True),
+            ).to(device)
             self.criterion = nn.L1Loss().to(device)
         elif self.arch in ("corner_heatmap", "heatmap"):
-            upsample = cfg.get("model", {}).get("upsample", "transpose")
-            self.model = CornerHeatmapNet(base_channels=base_ch, levels=levels, upsample=upsample, dropout=dropout).to(device)
+            upsample = model_cfg.get("upsample", "transpose")
+            self.model = CornerHeatmapNet(
+                base_channels=base_ch, levels=levels, upsample=upsample,
+                dropout=dropout, allow_dropout=allow_dropout,
+            ).to(device)
             self.criterion = nn.MSELoss().to(device)
         else:
             raise ValueError(f"Unknown corner arch: {self.arch}")

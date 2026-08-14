@@ -9,7 +9,23 @@ and what was left unfinished. Write for someone who knows nothing about your ses
 **Rule:** every session that touches the project appends an entry. A session that produced code but
 no entry is an incomplete session (`GEMINI.md` §2).
 
-## 2026-08-14 — Phase 04 Loss Ablation Evaluation & Gate PASSED (Antigravity)
+## 2026-08-14 — Phase 06 Corner Detection 40-Epoch Training Completion & Gate PASSED (Antigravity)
+
+**Brief:** Completed 40-epoch paired GPU training of `exp-009_corner_approach_a` (`CornerRegNet`) and `exp-010_corner_approach_b` (`CornerHeatmapNet`) on Kaggle dual T4 GPUs. Empirical results confirmed pre-registered prediction (`[REQ-31]`, ADR-007).
+
+**Final Metrics (40 Epochs):**
+1. **`exp-010_corner_approach_b` (`CornerHeatmapNet`) — WINNER**:
+   - **Validation MCE**: **`1.05 pixels`** ($\mathbf{0.14\%}$ of image diagonal!).
+   - **Validation Success Rate @ 1% Diagonal** ($\approx 7.24$ px): **`99.8%`** (reached `100.0%` at Epoch 33).
+   - **Real Smartphone Photo MCE**: **`62.11 pixels`** (strong sim2real transfer without ever training on real photos).
+2. **`exp-009_corner_approach_a` (`CornerRegNet`) — FC HEAD PLATEAU**:
+   - **Validation MCE**: Flat at **`224.74 pixels`** (31.04% diagonal), Succ@1% = `0.0%`. Regressing 8 scalars directly via FC layers (`32768 -> 512 -> 256 -> 8`) without 2D spatial heatmap supervision failed to preserve translation equivariance.
+
+**Gate Verdict:** **Phase 06 Gate PASSED (`[REQ-30]`, `[REQ-31]`, `[REQ-32]`)**. Fixed experiment ID formatting in `configs/exp/exp-010_corner_approach_b.yaml` and added robust glob lookup in `scripts/evaluate_corners.py`.
+
+---
+
+
 
 **Brief:** Evaluated the downloaded 20-epoch `DocEn_runs` GPU ablation checkpoints (`exp-005..008`), generated loss curves (`p04_loss_curves.png`), loss comparison crop figures (`p04_loss_comparison.png`), 18 restored sample grids (`restored_samples/`), and summary JSON table (`p04_ablation_summary.json`).
 

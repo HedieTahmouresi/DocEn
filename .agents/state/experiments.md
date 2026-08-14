@@ -29,8 +29,9 @@ Template: `state/templates/experiment-entry.md`.
 | exp-006 | Phase 04 | enh_l1 | exp-005 | **PASSED** — Val PSNR 23.8118 dB, SSIM 0.8347 |
 | exp-007 | Phase 04 | enh_l1msssim | exp-005 | **PASSED** — Val PSNR 24.0853 dB, SSIM 0.8491 |
 | exp-008 | Phase 04 | enh_l1msssim_sobel | exp-007 | **PASSED** — Val PSNR 23.9318 dB, SSIM 0.8497 (**SSIM winner**) |
-| exp-009 | Phase 06 | corner_approach_a | CornerRegNet coordinate regression | **PRE-REGISTERED / READY** — Shared 4-level U-Net encoder, 8x8 pool, FC head |
-| exp-010 | Phase 06 | corner_approach_b | CornerHeatmapNet heatmap regression | **PRE-REGISTERED / READY** — Shared 4-level U-Net encoder-decoder, 4-ch Gaussians (sigma=8) |
+| exp-009 | Phase 06 | corner_approach_a | CornerRegNet coordinate regression | **FAILED / FC STUCK** — Val MCE 224.74 px (31.04%), Succ@1% 0.0%, Real MCE 232.68 px |
+| exp-010 | Phase 06 | corner_approach_b | CornerHeatmapNet heatmap regression | **PASSED / WINNER** — Val MCE 1.05 px (0.14%), Succ@1% 99.8%, Real MCE 62.11 px |
+
 
 
 ### Why exp-001..004 are marked INVALID (2026-08-13, audit)

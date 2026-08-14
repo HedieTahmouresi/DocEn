@@ -36,14 +36,12 @@ Defects found and fixed (all silent — none produced an error message):
    hardcoded defaults while the frozen sets used `base.yaml`.
 5. **ADR-009 standardisation was never applied** — the stats were computed in
    Phase 03, written to `base.yaml`, and never read.
-**Phase:** Phase 04 (Enhancement Model & Loss Ablation) — **COMPLETE** · Phase 06 (Corner Detection) — **CODE COMPLETE**
-**Gate status:** Phase 00 PASSED · Phase 01 PASSED · Phase 02 PASSED · Phase 03 PASSED · **Phase 04 PASSED**
 
 ---
 
 ## Next concrete action
 
-**Execute Phase 05 (Enhancement Evaluation on Real Photos & OCR) and Phase 06 (Corner Detector GPU Runs).**
+**Execute Phase 05 (Enhancement Evaluation on Real Photos & OCR) and Phase 07 (Dropout Ablation).**
 
 ---
 
@@ -57,9 +55,9 @@ Defects found and fixed (all silent — none produced an error message):
 | 03 Datasets & frozen sets | COMPLETE | PASS |
 | 04 Enhancement + loss ablation | COMPLETE | **PASS (exp-008 SSIM 0.8497 vs 0.6803 baseline)** |
 | 05 Enhancement evaluation | ready | — |
-| 06 Corner detection A & B | COMPLETE | **code & tests complete, GPU runs ready** |
-
+| 06 Corner detection A & B | COMPLETE | **PASS (exp-010 Val MCE 1.05 px, 99.8% Succ@1%, Real MCE 62.11 px)** |
 | 07 Dropout ablation | not started | — |
+
 | 08 Bonus: chained scanner | not started | — |
 | 09 Bonus: joint fine-tune | **conditional** (ADR-012) | — |
 | 10 Report & submission | not started | — |

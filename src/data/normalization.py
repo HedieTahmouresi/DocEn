@@ -58,6 +58,20 @@ def resolve_from_checkpoint(ckpt_config: Dict[str, Any]) -> NormStats:
     return standardize, mean, std
 
 
+def standardize(
+    x: torch.Tensor,
+    mean: Optional[Tuple[float, ...]],
+    std: Optional[Tuple[float, ...]],
+) -> torch.Tensor:
+    """Standardise an input tensor [C, H, W] or [N, C, H, W] in [0, 1] using channel mean/std."""
+    if mean is None or std is None:
+        return x
+    shape = (-1, 1, 1) if x.dim() == 3 else (1, -1, 1, 1)
+    mean_t = torch.tensor(mean, dtype=x.dtype, device=x.device).view(shape)
+    std_t = torch.tensor(std, dtype=x.dtype, device=x.device).view(shape)
+    return (x - mean_t) / std_t
+
+
 def denormalize(
     x: torch.Tensor,
     mean: Optional[Tuple[float, ...]],
@@ -75,3 +89,4 @@ def denormalize(
     mean_t = torch.tensor(mean, dtype=x.dtype, device=x.device).view(shape)
     std_t = torch.tensor(std, dtype=x.dtype, device=x.device).view(shape)
     return x * std_t + mean_t
+

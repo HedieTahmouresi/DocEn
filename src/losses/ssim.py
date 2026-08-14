@@ -80,6 +80,14 @@ def _ssim_per_channel(
     return ssim_map, l_map, cs_map
 
 
+from functools import lru_cache
+
+
+@lru_cache(maxsize=16)
+def _get_cached_gaussian_window_2d(window_size: int, sigma: float, channels: int) -> torch.Tensor:
+    return create_gaussian_window_2d(window_size, sigma, channels)
+
+
 def ssim(
     img1: torch.Tensor,
     img2: torch.Tensor,
@@ -99,7 +107,7 @@ def ssim(
     img2 = img2.to(torch.float32)
 
     channels = img1.size(1)
-    window = create_gaussian_window_2d(window_size, sigma, channels).to(
+    window = _get_cached_gaussian_window_2d(window_size, sigma, channels).to(
         device=img1.device, dtype=img1.dtype
     )
 

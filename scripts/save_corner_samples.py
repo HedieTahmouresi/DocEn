@@ -66,7 +66,15 @@ def generate_corner_overlay_samples(
 
     for i in range(limit):
         item = real_dataset[i]
-        img_rgb = item["input"].numpy().transpose(1, 2, 0)  # [H, W, 3] uint8
+        sample_name = item.get("name", item.get("photo_id", f"{i+1:02d}.jpg"))
+        photo_id = Path(sample_name).stem
+
+        inp = item["input"].numpy().transpose(1, 2, 0)
+        if inp.dtype != np.uint8:
+            img_rgb = (np.clip(inp, 0.0, 1.0) * 255.0).astype(np.uint8)
+        else:
+            img_rgb = inp
+
         gt_corners_norm = item["target_corners"].numpy()   # [4, 2] in [0, 1]
 
         orig_h, orig_w = img_rgb.shape[:2]
@@ -92,9 +100,10 @@ def generate_corner_overlay_samples(
             cv2.circle(overlay, (gx, gy), 11, (255, 255, 255), 2)
             cv2.circle(overlay, (gx, gy), 9, (0, 0, 0), 1)
 
-        out_path = output_dir / f"sample_{i+1:02d}_{item['photo_id']}.png"
+        out_path = output_dir / f"sample_{i+1:02d}_{photo_id}.png"
         save_image(out_path, overlay)
         print(f"  Saved sample overlay: {out_path}")
+
 
     print(f"\nAll corner overlay samples saved to: {output_dir}")
     return output_dir

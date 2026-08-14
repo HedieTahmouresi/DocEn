@@ -1,0 +1,41 @@
+run:
+  experiment_id: exp-012
+  name: corner_b_control
+  seed: 1337
+  notes: >
+    Approach B with no dropout — the un-regularised control arm for the Phase 07
+    comparison ([REQ-38], [REQ-39]). Identical to exp-013 in every respect except
+    model.dropout, trained in the same process on the same shared data stream, so the two
+    arms see the same batches in the same order from identical initial weights.
+
+    exp-010 could serve as the control, but re-deriving it costs almost nothing:
+    train_corners.py steps every arm over one generator stream and the generator is the
+    bottleneck, not the GPU. It also makes the comparison robust to the suite being
+    stopped by the deadline — both arms will always have reached the same epoch.
+
+model:
+  arch: corner_heatmap
+  base_channels: 64
+  levels: 4
+  out_channels: 4
+  upsample: transpose
+  dropout: 0.0
+
+data:
+  resolution: 512
+  samples_per_epoch: 2000
+  frozen_version: v1
+  heatmap_sigma: 8.0
+
+loss:
+  type: mse
+
+optim:
+  optimizer: adam
+  lr: 1.0e-3
+  weight_decay: 0.0
+  scheduler: cosine
+  # T_max 40 matches exp-010's LR trajectory, so this arm stays comparable with the
+  # Phase 06 run epoch-for-epoch even if the suite is stopped early.
+  epochs: 40
+  grad_clip: 1.0

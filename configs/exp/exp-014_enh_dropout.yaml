@@ -1,0 +1,52 @@
+run:
+  experiment_id: exp-014
+  name: enh_dropout
+  seed: 1337
+  notes: >
+    Phase 07 enhancement arm ([REQ-38]). The control is exp-008 (L-D, the Phase 04 SSIM
+    winner selected on validation), and the ONLY difference is model.dropout.
+
+    The control ran 20 of its configured 40 epochs before a Colab session died. That is
+    why this config keeps epochs: 40 rather than 20 — the cosine T_max must match, or the
+    two arms would follow different LR trajectories and the comparison would have two
+    variables instead of one. Stop this run at the same epoch the control reached and
+    compare there; train.py checkpoints and logs every epoch, so any stopping point works
+    as long as it is the same one.
+
+    Placement is the bottleneck only, per model-specs §4: Dropout2d in the early
+    high-resolution layers destroys the thin text strokes the whole task is about, and the
+    symptom (smeared output, sharply lower PSNR) reads as "dropout is bad" when it is
+    really a placement mistake.
+
+    The deliverable is the Gap column, not the table: [REQ-39] asks whether the gap
+    between synthetic validation scores and real-photo scores shrinks, and it must be
+    answered in a sentence. The real-photo half comes from evaluate.py's OCR/CER run.
+
+model:
+  arch: unet
+  base_channels: 64
+  levels: 4
+  out_channels: 3
+  upsample: transpose
+  # [CON-04] is lifted here and nowhere earlier ([REQ-38]). Opt-in is explicit.
+  dropout: 0.2
+  allow_dropout: true
+
+data:
+  resolution: 512
+  samples_per_epoch: 2000
+  frozen_version: v1
+
+loss:
+  # Identical to exp-008. Changing the loss here would confound the dropout comparison.
+  type: l1_msssim_sobel
+  alpha: 0.84
+  sobel_weight: 0.1
+
+optim:
+  optimizer: adam
+  lr: 1.0e-3
+  weight_decay: 0.0
+  scheduler: cosine
+  epochs: 40
+  grad_clip: 1.0

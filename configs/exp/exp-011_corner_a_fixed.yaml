@@ -1,0 +1,58 @@
+run:
+  experiment_id: exp-011
+  name: corner_a_fixed
+  seed: 1337
+  notes: >
+    Approach A re-run after diagnosing exp-009 as a collapsed head rather than a result
+    about coordinate regression. exp-009's per-corner errors were near-identical on the
+    500-sample synthetic test set and the 30 real photos (152/157/160/430 px against
+    155/151/162/463 px), and its validation and test MCE agreed to two decimals — which
+    only happens when the output barely depends on the input.
+
+    Two changes against exp-009, both justified independently of the outcome:
+      * spatial_pool avg -> max. Average-pooling 4x4 blocks of a post-BatchNorm ReLU map
+        leaves a vector dominated by its per-channel DC term, so most of the positional
+        signal was gone before the first Linear ever saw it — the letter of ADR-007's
+        "no GAP" with much of GAP's damage. Max keeps the peak response per block, which
+        is what a corner-like feature looks like. Neither option has parameters.
+      * head_norm false -> true. BatchNorm1d between the FC layers. The trunk is
+        normalised end to end, so the head was the one place a bad scale survived to the
+        prediction. Permitted under [CON-04] on ADR-005's reading of BatchNorm as a
+        normalisation/optimisation layer rather than an explicit regulariser.
+
+    LR 3e-4 rather than 1e-3: Adam at 1e-3 on a 16.8M-parameter Linear(32768, 512) is the
+    standard way to kill a wide ReLU head in the first few hundred steps, and the lopsided
+    BL error is what partial unit death looks like. ADR-007 §2 asks for equal LR search
+    effort across both arms; a three-point sweep did not fit the remaining compute, and
+    that shortfall is recorded in DEV-004 rather than hidden.
+
+    Everything else matches exp-010 exactly — same encoder, same budget, same frozen sets,
+    same shared data stream — so any remaining difference comes from the output
+    representation, which is the question [REQ-30] actually asks.
+
+model:
+  arch: corner_reg
+  base_channels: 64
+  levels: 4
+  out_channels: 8
+  dropout: 0.0
+  spatial_pool: max
+  head_norm: true
+
+data:
+  resolution: 512
+  samples_per_epoch: 2000
+  frozen_version: v1
+
+loss:
+  type: l1
+
+optim:
+  optimizer: adam
+  lr: 3.0e-4
+  weight_decay: 0.0
+  scheduler: cosine
+  # T_max 40 matches exp-010's LR trajectory, keeping this arm comparable with the
+  # Phase 06 run epoch-for-epoch if the suite is stopped early.
+  epochs: 40
+  grad_clip: 1.0

@@ -1,0 +1,47 @@
+run:
+  experiment_id: exp-013
+  name: corner_b_dropout
+  seed: 1337
+  notes: >
+    Phase 07 corner arm ([REQ-38]). The ONLY difference from exp-012 is model.dropout —
+    same seed, architecture, schedule, batch size, frozen_version and data stream.
+
+    Placement is the bottleneck, per model-specs §4: dropping bottleneck activations
+    forces the network to infer a corner from global page geometry rather than from one
+    memorised local texture, which is precisely the domain-overfitting [REQ-39] asks
+    about. Dropout in the early high-resolution levels would instead destroy the fine
+    spatial detail the heatmap peaks depend on.
+
+    The deliverable is the Gap column: does the synthetic-val -> real-photo gap shrink?
+    train_corners.py evaluates the real photos every epoch, so both halves of that gap are
+    logged per epoch in metrics.csv and the answer survives an early stop.
+
+model:
+  arch: corner_heatmap
+  base_channels: 64
+  levels: 4
+  out_channels: 4
+  upsample: transpose
+  # [CON-04] is lifted here and nowhere earlier ([REQ-38]). allow_dropout must be set
+  # explicitly, so a stray dropout value can never silently regularise a Phase 04/06 run.
+  dropout: 0.2
+  allow_dropout: true
+
+data:
+  resolution: 512
+  samples_per_epoch: 2000
+  frozen_version: v1
+  heatmap_sigma: 8.0
+
+loss:
+  type: mse
+
+optim:
+  optimizer: adam
+  lr: 1.0e-3
+  # Still 0.0. [REQ-38] asks for dropout, not a general regularisation sweep; weight decay
+  # here would confound the comparison (phase-07 task B7).
+  weight_decay: 0.0
+  scheduler: cosine
+  epochs: 40
+  grad_clip: 1.0

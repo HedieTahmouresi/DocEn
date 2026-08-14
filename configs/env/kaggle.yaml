@@ -1,0 +1,21 @@
+# Environment profile: Kaggle Notebooks (T4 x2 or P100).
+#
+# Kaggle gives 4 vCPUs against Colab's 2. This pipeline is CPU-bound in the generator
+# (ADR-003), so the extra workers are the whole reason for having a separate profile:
+# running Kaggle under configs/env/colab_t4.yaml leaves half the throughput unused.
+device: cuda
+amp: true
+
+# 4 vCPUs. Two loader workers per training process, so two concurrent processes
+# (one per GPU, pinned with CUDA_VISIBLE_DEVICES) still fit without oversubscribing.
+num_workers: 2
+
+# Same batch size as colab_t4 on purpose. Batch size changes BatchNorm statistics and
+# therefore the result, so every run being compared must share it — the Phase 04/06/07
+# comparisons all reach back to runs made at batch 8 (DEV-003).
+batch_size: 8
+val_batch_size: 16
+
+# NHWC lets cuDNN reach Turing's tensor-core convolution kernels without transposing
+# before every conv. A memory layout, not a change to the computation.
+channels_last: true

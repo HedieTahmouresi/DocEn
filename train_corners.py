@@ -161,11 +161,14 @@ class CornerArm:
         )
         self.scaler = torch.amp.GradScaler(enabled=use_amp)
 
+        self.device = device
         self.best_val_mce = float("inf")
         self.start_epoch = 1
         self.metrics_log: List[Dict[str, Any]] = []
 
-    def train_step(self, batch: Dict[str, torch.Tensor], device: torch.device, use_amp: bool) -> float:
+    def train_step(self, batch: Dict[str, torch.Tensor], device: Optional[torch.device] = None, use_amp: bool = False) -> float:
+        if device is None:
+            device = self.device
         self.model.train()
         inputs = batch["input"].to(device)
 
@@ -192,11 +195,14 @@ class CornerArm:
         return float(loss.item())
 
     @torch.no_grad()
-    def evaluate(self, loader: DataLoader, device: torch.device, use_amp: bool) -> Tuple[float, Dict[str, float]]:
+    def evaluate(self, loader: DataLoader, device: Optional[torch.device] = None, use_amp: bool = False) -> Tuple[float, Dict[str, float]]:
+        if device is None:
+            device = self.device
         self.model.eval()
         total_loss = 0.0
         all_preds = []
         all_targets = []
+
 
         for batch in loader:
             inputs = batch["input"].to(device)
@@ -283,8 +289,20 @@ def main():
     arm_configs = [load_config(env=args.env, exp_file=cfg_path) for cfg_path in args.configs]
 
 
-    # Instantiate arms
-    arms = [CornerArm(cfg, device=device, use_amp=use_amp) for cfg in arm_configs]
+    # Instantiate arms (assign to separate GPUs if multi-GPU available)
+    num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    if num_gpus >= 2:
+        print(f"Multi-GPU detected: {num_gpus} GPUs available. Assigning arms to separate GPUs:")
+        arms = []
+        for idx, cfg in enumerate(arm_configs):
+            gpu_idx = idx % num_gpus
+            arm_device = torch.device(f"cuda:{gpu_idx}")
+            exp_id = cfg.get("run", {}).get("experiment_id", f"exp-00{idx+9}")
+            print(f"  -> Arm {exp_id} ({cfg.get('model', {}).get('arch')}) assigned to {arm_device}")
+            arms.append(CornerArm(cfg, device=arm_device, use_amp=use_amp))
+    else:
+        arms = [CornerArm(cfg, device=device, use_amp=use_amp) for cfg in arm_configs]
+
 
     # Prepare datasets & data loaders
     scans_dir = primary_cfg["clean_scans_dir"]
@@ -394,7 +412,7 @@ def main():
         # Shared data stream training pass
         for batch in tqdm(train_loader, desc=f"Epoch {epoch}/{epochs} [Train]"):
             for arm in arms:
-                loss_val = arm.train_step(batch, device=device, use_amp=use_amp)
+                loss_val = arm.train_step(batch, device=arm.device, use_amp=use_amp)
                 train_losses[arm.label] += loss_val * batch["input"].size(0)
 
         epoch_secs = time.time() - t0
@@ -402,14 +420,15 @@ def main():
         # Epoch evaluation pass for both arms
         for arm in arms:
             avg_train_loss = train_losses[arm.label] / len(train_dataset)
-            val_loss, val_metrics = arm.evaluate(val_loader, device=device, use_amp=use_amp)
+            val_loss, val_metrics = arm.evaluate(val_loader, device=arm.device, use_amp=use_amp)
 
             real_mce_px = 0.0
             real_succ_1pct = 0.0
             if real_loader is not None:
-                _, real_metrics = arm.evaluate(real_loader, device=device, use_amp=use_amp)
+                _, real_metrics = arm.evaluate(real_loader, device=arm.device, use_amp=use_amp)
                 real_mce_px = real_metrics["mean_corner_error_px"]
                 real_succ_1pct = real_metrics["success_rate_1pct"]
+
 
             curr_lr = arm.scheduler.get_last_lr()[0]
             arm.scheduler.step()

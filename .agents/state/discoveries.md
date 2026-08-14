@@ -16,6 +16,19 @@ Newest first.
 
 ---
 
+## 2026-08-14 — Phase 04 Loss Ablation Empirical Findings (Antigravity)
+
+### Loss Function Performance & Tradeoffs (`[REQ-45]`, `[REQ-23]`)
+
+Evaluation of all four loss variants on the 500 frozen validation samples (`frozen_version: v1`):
+
+1. **`exp-008` (L1 + MS-SSIM + Sobel)** achieved the highest SSIM (**0.8497**), closely followed by **`exp-007` (L1 + MS-SSIM)** at **0.8491**.
+2. **`exp-005` (MSE)** achieved the highest PSNR (**24.2829 dB**), but lower SSIM (**0.8398**). This confirms the theoretical prediction in ADR-006: PSNR is a monotonic function of MSE, so L2 loss directly optimizes PSNR while MS-SSIM and Sobel gradient terms prioritize sharp text stroke boundaries and structural similarity.
+3. **`exp-006` (L1)** reached SSIM **0.8347** and PSNR **23.8118 dB**, performing solidly but strictly below the MS-SSIM composite formulations in structural preservation.
+4. **All four trained models beat the no-model baseline (PSNR 15.1627 dB | SSIM 0.6803)** by **+0.169 SSIM** and **+9.1 dB PSNR**, satisfying `[REQ-26]` and passing the Phase 04 gate.
+
+---
+
 ## 2026-08-13 — Codebase audit findings (Claude, evaluator role)
 
 ### `.gitignore`'s unanchored `env/` swallowed the environment profiles

@@ -212,13 +212,21 @@ class CornerArm:
                     coords_pred = preds.cpu().numpy()  # [N, 8]
                     coords_gt = targets_flat.cpu().numpy()  # [N, 8]
                 else:
-                    targets = batch["target_heatmaps"].to(device)
                     preds = self.model(inputs)
-                    loss = self.criterion(preds, targets)
+                    if "target_heatmaps" in batch:
+                        targets = batch["target_heatmaps"].to(device)
+                        loss = self.criterion(preds, targets)
+                    else:
+                        loss = torch.tensor(0.0, device=device)
 
                     # Extract coordinates via Argmax + Local Soft-Argmax
                     coords_pred, _ = extract_corners_from_heatmaps(preds.cpu().numpy(), window_size=11, normalize=True)
-                    coords_gt = batch["target_corners"].numpy().reshape(-1, 8)
+                    target_corners = batch["target_corners"]
+                    if isinstance(target_corners, torch.Tensor):
+                        coords_gt = target_corners.cpu().numpy().reshape(-1, 8)
+                    else:
+                        coords_gt = np.array(target_corners).reshape(-1, 8)
+
 
             total_loss += float(loss.item()) * inputs.size(0)
             all_preds.append(coords_pred)

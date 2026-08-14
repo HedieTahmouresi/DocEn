@@ -6,11 +6,15 @@ outputs/figures/p06_corner_overlays/
 """
 
 import os
+import sys
 import cv2
 import numpy as np
 import torch
 from pathlib import Path
 from typing import Optional, Tuple
+
+# Ensure project root is in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.data.datasets import RealPhotoDataset
 from src.pipeline.corners import CornerPipeline, visualize_corner_overlay

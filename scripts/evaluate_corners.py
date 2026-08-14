@@ -11,8 +11,12 @@ Outputs:
 import csv
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
+
+# Ensure project root is in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import matplotlib.pyplot as plt
 import numpy as np

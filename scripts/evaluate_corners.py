@@ -138,11 +138,10 @@ def main():
 
     runs_dir = Path(base_cfg.get("runs_root", "runs"))
 
-    arm_a_candidates = sorted(list(runs_dir.glob("*corner_approach_a/checkpoints/inference_best.pt")) + list(runs_dir.glob("*corner_approach_a/checkpoints/best.pt")))
-    arm_b_candidates = sorted(list(runs_dir.glob("*corner_approach_b/checkpoints/inference_best.pt")) + list(runs_dir.glob("*corner_approach_b/checkpoints/best.pt")))
+    arm_a_candidates = sorted(list(runs_dir.glob("*corner_a*/checkpoints/best.pt")) + list(runs_dir.glob("*corner_approach_a*/checkpoints/best.pt")))
+    arm_b_candidates = sorted(list(runs_dir.glob("*corner_b*/checkpoints/best.pt")) + list(runs_dir.glob("*corner_approach_b*/checkpoints/best.pt")))
 
-
-    arm_a_path = arm_a_candidates[0] if arm_a_candidates else (runs_dir / "exp-009_corner_approach_a" / "checkpoints" / "best.pt")
+    arm_a_path = arm_a_candidates[0] if arm_a_candidates else (runs_dir / "exp-011_corner_a_fixed" / "checkpoints" / "best.pt")
     arm_b_path = arm_b_candidates[0] if arm_b_candidates else (runs_dir / "exp-010_corner_approach_b" / "checkpoints" / "best.pt")
 
     results = {}

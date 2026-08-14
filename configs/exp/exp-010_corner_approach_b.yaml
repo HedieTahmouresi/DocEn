@@ -1,6 +1,7 @@
 run:
-  experiment_id: exp-10
+  experiment_id: exp-010
   name: corner_approach_b
+
   seed: 1337
   notes: "Approach B: Heatmap regression via CornerHeatmapNet (MSE loss on [0,1] 4-channel Gaussians)"
 

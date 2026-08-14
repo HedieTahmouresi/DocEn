@@ -119,8 +119,11 @@ def main():
 
     runs_dir = Path(base_cfg.get("runs_root", "runs"))
 
-    arm_a_path = runs_dir / "exp-009_corner_approach_a" / "checkpoints" / "best.pt"
-    arm_b_path = runs_dir / "exp-010_corner_approach_b" / "checkpoints" / "best.pt"
+    arm_a_candidates = sorted(list(runs_dir.glob("*corner_approach_a/checkpoints/best.pt")))
+    arm_b_candidates = sorted(list(runs_dir.glob("*corner_approach_b/checkpoints/best.pt")))
+
+    arm_a_path = arm_a_candidates[0] if arm_a_candidates else (runs_dir / "exp-009_corner_approach_a" / "checkpoints" / "best.pt")
+    arm_b_path = arm_b_candidates[0] if arm_b_candidates else (runs_dir / "exp-010_corner_approach_b" / "checkpoints" / "best.pt")
 
     results = {}
 
@@ -128,6 +131,7 @@ def main():
         if not path.exists():
             print(f"Skipping {arm_label}: checkpoint {path} not found.")
             continue
+
 
         model, arch = load_model_from_ckpt(path, device)
         syn_metrics = evaluate_corner_model(model, arch, test_loader, device)

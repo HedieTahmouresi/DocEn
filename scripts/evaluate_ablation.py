@@ -215,25 +215,47 @@ def summarise_variants(variants: dict, baseline: dict, batch_size: int = 8) -> l
         }
     ]
 
-    # 500 samples x 4 models at 512x512 is half an hour on CPU and seconds on the T4.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        try:
+            torch.cuda.empty_cache()
+        except Exception:
+            device = torch.device("cpu")
 
     for name, (model, dataset) in variants.items():
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
         psnr_total, ssim_total, n = 0.0, 0.0, 0
-        model.to(device).eval()
-        for batch in loader:
-            inputs = batch["input"].to(device)
-            targets = batch["target"].to(device)
-            outputs = model(inputs)
-            b = inputs.size(0)
-            psnr_total += calculate_psnr(outputs, targets) * b
-            ssim_total += calculate_ssim(outputs, targets) * b
-            n += b
+        try:
+            model.to(device).eval()
+            for batch in loader:
+                inputs = batch["input"].to(device)
+                targets = batch["target"].to(device)
+                outputs = model(inputs)
+                b = inputs.size(0)
+                psnr_total += calculate_psnr(outputs, targets) * b
+                ssim_total += calculate_ssim(outputs, targets) * b
+                n += b
+        except torch.cuda.OutOfMemoryError:
+            print(f"CUDA OOM evaluating {name} on GPU; falling back to CPU...")
+            torch.cuda.empty_cache()
+            cpu_device = torch.device("cpu")
+            model.to(cpu_device).eval()
+            psnr_total, ssim_total, n = 0.0, 0.0, 0
+            for batch in loader:
+                inputs = batch["input"].to(cpu_device)
+                targets = batch["target"].to(cpu_device)
+                outputs = model(inputs)
+                b = inputs.size(0)
+                psnr_total += calculate_psnr(outputs, targets) * b
+                ssim_total += calculate_ssim(outputs, targets) * b
+                n += b
+
         rows.append(
             {"variant": name, "val_psnr": round(psnr_total / n, 4), "val_ssim": round(ssim_total / n, 4)}
         )
         model.cpu()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     return rows
 
